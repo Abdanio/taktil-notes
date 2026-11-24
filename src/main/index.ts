@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, protocol, Notification, Menu } from
 import { join, extname } from 'path'
 import { promises as fs } from 'fs'
 import type { AppConfig, Folder, Note } from '../preload/index.d'
+import { setupAutoUpdater } from './updater'
 
 // Set AppUserModelId for Windows native notifications to function properly
 const APP_USER_MODEL_ID = 'com.catatan.taktil'
@@ -190,6 +191,7 @@ app.whenReady().then(async () => {
   })
 
   setupIpcHandlers()
+  setupAutoUpdater(() => mainWindow)
 
   mainWindow = await createWindow()
 

@@ -13,7 +13,8 @@ import {
   Keyboard,
   PushPinSlash,
   Folder as FolderIcon,
-  BookOpen
+  BookOpen,
+  CloudArrowDown
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -22,6 +23,8 @@ interface CommandPaletteProps {
   onClose: () => void
   onOpenShortcuts: () => void
   onOpenMarkdownGuide?: () => void
+  onOpenUpdateModal?: () => void
+  appVersion?: string
 }
 
 interface CommandAction {
@@ -37,7 +40,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
   onOpenShortcuts,
-  onOpenMarkdownGuide
+  onOpenMarkdownGuide,
+  onOpenUpdateModal,
+  appVersion = '1.0.0'
 }) => {
   const {
     notes,
@@ -165,6 +170,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       run: () => {
         onClose()
         onOpenMarkdownGuide?.()
+      }
+    },
+    {
+      id: 'action-check-update',
+      title: 'Periksa Pembaruan Aplikasi (Auto-Update)',
+      subtitle: `Versi saat ini: v${appVersion}`,
+      icon: <CloudArrowDown size={16} weight="bold" className="text-accent" />,
+      section: 'Bantuan',
+      run: () => {
+        onClose()
+        onOpenUpdateModal?.()
       }
     },
     {

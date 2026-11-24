@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI } from './index.d'
+import type { ElectronAPI, UpdateStatus } from './index.d'
 
 const api: ElectronAPI = {
   // Storage
@@ -52,6 +52,21 @@ const api: ElectronAPI = {
     ipcRenderer.on('notification:chime', listener)
     return () => {
       ipcRenderer.removeListener('notification:chime', listener)
+    }
+  },
+
+  // Auto-Updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:downloadUpdate'),
+  quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall'),
+  getAppVersion: () => ipcRenderer.invoke('updater:getAppVersion'),
+  onUpdaterStatus: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => {
+      callback(status)
+    }
+    ipcRenderer.on('updater:status', listener)
+    return () => {
+      ipcRenderer.removeListener('updater:status', listener)
     }
   }
 }

@@ -9,7 +9,7 @@ import {
   type DragEndEvent
 } from '@dnd-kit/core'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { useNotes } from './context/NotesContext'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
@@ -18,6 +18,8 @@ import { NoteCard } from './components/NoteCard'
 import { CommandPalette } from './components/CommandPalette'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { MarkdownGuideModal } from './components/MarkdownGuideModal'
+import { UpdateModal } from './components/UpdateModal'
+import type { UpdateStatus } from '../../preload/index.d'
 import { startOnboardingTour } from './lib/tour'
 
 export const AppContent: React.FC = () => {
@@ -43,6 +45,65 @@ export const AppContent: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
   const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false)
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('1.0.0')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
+
+  // Listen for auto-updater status and fetch initial version
+  useEffect(() => {
+    window.electronAPI?.getAppVersion?.().then((ver) => {
+      if (ver) setAppVersion(ver)
+    }).catch(() => {})
+
+    const unsubscribe = window.electronAPI?.onUpdaterStatus?.((status) => {
+      setUpdateStatus(status)
+      if (status.currentVersion) {
+        setAppVersion(status.currentVersion)
+      }
+
+      if (status.state === 'available') {
+        toast.info(`Versi baru v${status.version} tersedia!`, {
+          description: 'Klik untuk melihat catatan rilis dan mengunduh.',
+          action: {
+            label: 'Lihat Pembaruan',
+            onClick: () => setIsUpdateModalOpen(true)
+          }
+        })
+      } else if (status.state === 'downloaded') {
+        toast.success(`Pembaruan v${status.version} siap dipasang!`, {
+          description: 'Aplikasi dapat segera dimuat ulang untuk memperbarui.',
+          action: {
+            label: 'Mulai Ulang',
+            onClick: () => window.electronAPI?.quitAndInstall?.()
+          }
+        })
+      }
+    })
+
+    // Silent background check after 6 seconds
+    const backgroundCheckTimer = setTimeout(() => {
+      window.electronAPI?.checkForUpdates?.().catch(() => {})
+    }, 6000)
+
+    return () => {
+      unsubscribe?.()
+      clearTimeout(backgroundCheckTimer)
+    }
+  }, [])
+
+  const handleCheckForUpdates = (): void => {
+    setIsUpdateModalOpen(true)
+    setUpdateStatus({ state: 'checking', currentVersion: appVersion })
+    window.electronAPI?.checkForUpdates?.().catch(() => {})
+  }
+
+  const handleDownloadUpdate = (): void => {
+    window.electronAPI?.downloadUpdate?.().catch(() => {})
+  }
+
+  const handleQuitAndInstall = (): void => {
+    window.electronAPI?.quitAndInstall?.().catch(() => {})
+  }
 
   // Configure PointerSensor with distance constraint to not clash with titlebar drag or normal clicks
   const sensors = useSensors(
@@ -223,6 +284,9 @@ export const AppContent: React.FC = () => {
               <Sidebar
                 onOpenShortcuts={() => setIsShortcutsOpen(true)}
                 onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
+                onOpenUpdateModal={handleCheckForUpdates}
+                appVersion={appVersion}
+                hasUpdateAvailable={updateStatus.state === 'available' || updateStatus.state === 'downloaded'}
               />
             </motion.div>
           )}
@@ -264,6 +328,8 @@ export const AppContent: React.FC = () => {
           onClose={() => setIsCommandPaletteOpen(false)}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
           onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
+          onOpenUpdateModal={handleCheckForUpdates}
+          appVersion={appVersion}
         />
 
         {/* Keyboard Shortcuts Modal (Ctrl+/) */}
@@ -277,6 +343,16 @@ export const AppContent: React.FC = () => {
           isOpen={isMarkdownGuideOpen}
           onClose={() => setIsMarkdownGuideOpen(false)}
           onInsertMarkdown={insertMarkdownSnippet}
+        />
+
+        {/* Auto-Updater Modal */}
+        <UpdateModal
+          isOpen={isUpdateModalOpen}
+          onClose={() => setIsUpdateModalOpen(false)}
+          status={updateStatus}
+          onCheckForUpdates={handleCheckForUpdates}
+          onDownloadUpdate={handleDownloadUpdate}
+          onQuitAndInstall={handleQuitAndInstall}
         />
 
         {/* Stackable Sonner Toasts */}

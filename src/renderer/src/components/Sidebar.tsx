@@ -13,6 +13,7 @@ import {
   Question,
   Keyboard,
   BookOpen,
+  CloudArrowDown,
   X
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
@@ -23,6 +24,9 @@ import { soundEffects } from '../lib/sound'
 interface SidebarProps {
   onOpenShortcuts: () => void
   onOpenMarkdownGuide: () => void
+  onOpenUpdateModal?: () => void
+  appVersion?: string
+  hasUpdateAvailable?: boolean
 }
 
 const FOLDER_COLORS = ['#D95D39', '#81B29A', '#F2CC8F', '#3D405B', '#E07A5F', '#588157']
@@ -98,7 +102,10 @@ const DroppableSidebarTarget: React.FC<{
 
 export const Sidebar: React.FC<SidebarProps> = ({
   onOpenShortcuts,
-  onOpenMarkdownGuide
+  onOpenMarkdownGuide,
+  onOpenUpdateModal,
+  appVersion = '1.0.0',
+  hasUpdateAvailable = false
 }) => {
   const {
     notes,
@@ -389,6 +396,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {config.theme === 'warm-paper' ? 'Warm Paper' : 'Obsidian'}
           </span>
         </button>
+
+        {/* Auto-Updater Status / Check Button */}
+        {onOpenUpdateModal && (
+          <button
+            onClick={onOpenUpdateModal}
+            title="Periksa Pembaruan Versi Aplikasi"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-ink-secondary hover:text-ink-primary hover:bg-paper-hover transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <CloudArrowDown size={15} weight="bold" className="text-accent" />
+              <span>Pembaruan</span>
+            </div>
+            <span className="text-[10px] font-mono text-ink-muted px-1.5 py-0.5 rounded bg-paper-card border border-paper-border flex items-center gap-1.5">
+              {hasUpdateAvailable && (
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              )}
+              v{appVersion}
+            </span>
+          </button>
+        )}
 
         {/* Shortcuts & Guide Trigger */}
         <div className="flex items-center justify-between pt-1 px-1 border-t border-paper-border/40">

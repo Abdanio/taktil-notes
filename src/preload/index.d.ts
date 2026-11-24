@@ -29,6 +29,18 @@ export interface AppConfig {
   alwaysOnTop: boolean
 }
 
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  currentVersion?: string
+  releaseNotes?: string
+  releaseDate?: string
+  percent?: number
+  transferred?: number
+  total?: number
+  message?: string
+}
+
 export interface ElectronAPI {
   // Storage
   loadNotes: () => Promise<Note[]>
@@ -54,6 +66,13 @@ export interface ElectronAPI {
   showNotification: (options: { title: string; body: string; noteId?: string }) => Promise<void>
   onNotificationClicked: (callback: (data: { noteId?: string }) => void) => () => void
   onNotificationChime: (callback: () => void) => () => void
+
+  // Auto-Updater
+  checkForUpdates: () => Promise<void>
+  downloadUpdate: () => Promise<void>
+  quitAndInstall: () => Promise<void>
+  getAppVersion: () => Promise<string>
+  onUpdaterStatus: (callback: (status: UpdateStatus) => void) => () => void
 }
 
 declare global {
