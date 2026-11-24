@@ -75,6 +75,11 @@ export interface ElectronAPI {
   quitAndInstall: () => Promise<void>
   getAppVersion: () => Promise<string>
   onUpdaterStatus: (callback: (status: UpdateStatus) => void) => () => void
+
+  // Editorial Publishing Exporter
+  exportPdf: (options: { title: string; htmlContent: string; markdownContent?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>
+  exportHtml: (options: { title: string; htmlContent: string; markdownContent?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>
+  exportEpub: (options: { title: string; htmlContent: string; markdownContent?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>
 }
 
 declare global {

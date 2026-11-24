@@ -68,7 +68,12 @@ const api: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('updater:status', listener)
     }
-  }
+  },
+
+  // Editorial Publishing Exporter
+  exportPdf: (options) => ipcRenderer.invoke('exporter:exportPdf', options),
+  exportHtml: (options) => ipcRenderer.invoke('exporter:exportHtml', options),
+  exportEpub: (options) => ipcRenderer.invoke('exporter:exportEpub', options)
 }
 
 if (process.contextIsolated) {

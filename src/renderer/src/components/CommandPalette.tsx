@@ -17,7 +17,10 @@ import {
   CloudArrowDown,
   Waveform,
   TextAlignCenter,
-  Graph
+  Graph,
+  FilePdf,
+  FileHtml,
+  Book
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -52,6 +55,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const {
     notes,
     folders,
+    activeNote,
     config,
     createNote,
     setActiveNoteId,
@@ -89,6 +93,55 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         onClose()
       }
     },
+    ...(activeNote
+      ? [
+          {
+            id: 'action-export-pdf',
+            title: `Ekspor PDF: ${activeNote.title || 'Catatan'}`,
+            subtitle: 'Format tata letak buku cetak A4',
+            icon: <FilePdf size={16} weight="bold" className="text-red-500" />,
+            section: 'Ekspor Dokumen',
+            run: () => {
+              onClose()
+              window.electronAPI?.exportPdf({
+                title: activeNote.title || 'Catatan Taktil',
+                htmlContent: `<p>${activeNote.content.replace(/\n/g, '<br/>')}</p>`,
+                markdownContent: activeNote.content
+              })
+            }
+          },
+          {
+            id: 'action-export-html',
+            title: `Ekspor HTML: ${activeNote.title || 'Catatan'}`,
+            subtitle: 'Berkas web mandiri offline',
+            icon: <FileHtml size={16} weight="bold" className="text-blue-500" />,
+            section: 'Ekspor Dokumen',
+            run: () => {
+              onClose()
+              window.electronAPI?.exportHtml({
+                title: activeNote.title || 'Catatan Taktil',
+                htmlContent: `<p>${activeNote.content.replace(/\n/g, '<br/>')}</p>`,
+                markdownContent: activeNote.content
+              })
+            }
+          },
+          {
+            id: 'action-export-epub',
+            title: `Ekspor EPUB: ${activeNote.title || 'Catatan'}`,
+            subtitle: 'Buku digital e-reader Kindle & Apple Books',
+            icon: <Book size={16} weight="bold" className="text-emerald-600" />,
+            section: 'Ekspor Dokumen',
+            run: () => {
+              onClose()
+              window.electronAPI?.exportEpub({
+                title: activeNote.title || 'Catatan Taktil',
+                htmlContent: `<p>${activeNote.content.replace(/\n/g, '<br/>')}</p>`,
+                markdownContent: activeNote.content
+              })
+            }
+          }
+        ]
+      : []),
     {
       id: 'action-open-graph',
       title: 'Buka Peta Pengetahuan (Constellation Graph)',

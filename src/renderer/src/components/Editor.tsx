@@ -24,7 +24,11 @@ import {
   CaretDown,
   CaretRight,
   FileText,
-  Plus
+  Plus,
+  Export,
+  FilePdf,
+  FileHtml,
+  Book
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -64,6 +68,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isReminderOpen, setIsReminderOpen] = useState(false)
   const [isSoundMenuOpen, setIsSoundMenuOpen] = useState(false)
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
   const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -332,6 +337,45 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
       } else {
         toast.warning(`Format file .${ext} tidak didukung. Gunakan gambar atau file teks/md.`)
       }
+    }
+  }
+
+  // Export note to PDF, HTML, or EPUB
+  const handleExport = async (format: 'pdf' | 'html' | 'epub'): Promise<void> => {
+    if (!activeNote || !window.electronAPI) return
+    setIsExportMenuOpen(false)
+    soundEffects.playChecklistBounce()
+    const html = markdownToHtml(activeNote.content)
+
+    toast.info(`Menyiapkan ekspor ${format.toUpperCase()}...`)
+
+    let result
+    if (format === 'pdf') {
+      result = await window.electronAPI.exportPdf({
+        title: activeNote.title || 'Catatan Taktil',
+        htmlContent: html,
+        markdownContent: activeNote.content
+      })
+    } else if (format === 'html') {
+      result = await window.electronAPI.exportHtml({
+        title: activeNote.title || 'Catatan Taktil',
+        htmlContent: html,
+        markdownContent: activeNote.content
+      })
+    } else if (format === 'epub') {
+      result = await window.electronAPI.exportEpub({
+        title: activeNote.title || 'Catatan Taktil',
+        htmlContent: html,
+        markdownContent: activeNote.content
+      })
+    }
+
+    if (result?.success) {
+      toast.success(`Berkas ${format.toUpperCase()} berhasil diekspor!`, {
+        description: result.filePath
+      })
+    } else if (result?.error) {
+      toast.error(`Gagal mengekspor: ${result.error}`)
     }
   }
 
@@ -618,6 +662,90 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
               <PushPinSlash size={15} weight="regular" />
             )}
           </button>
+
+          {/* Export Document Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              title="Ekspor Dokumen (PDF, HTML, EPUB)"
+              className={cn(
+                'w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
+                isExportMenuOpen
+                  ? 'text-accent bg-accent/15'
+                  : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
+              )}
+            >
+              <Export size={15} weight="bold" />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="absolute right-0 top-9 w-60 bg-paper-card border border-paper-border rounded-xl p-2 shadow-2xl z-50 text-xs space-y-1">
+                <div className="px-2 py-1 text-[11px] font-semibold text-ink-muted border-b border-paper-border/60 mb-1 flex items-center justify-between">
+                  <span>Ekspor Catatan Editorial</span>
+                  <button
+                    onClick={() => setIsExportMenuOpen(false)}
+                    className="hover:text-ink-primary cursor-pointer"
+                  >
+                    <X size={12} weight="bold" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleExport('pdf')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-paper-hover text-ink-primary transition-colors flex items-start gap-2.5 cursor-pointer group"
+                >
+                  <div className="p-1.5 rounded-md bg-red-500/10 text-red-500 shrink-0 mt-0.5">
+                    <FilePdf size={16} weight="bold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xs group-hover:text-accent transition-colors">
+                      PDF Buku Editorial
+                    </div>
+                    <div className="text-[10px] text-ink-muted leading-tight">
+                      Tata letak cetak A4, drop-cap pembuka, nomor halaman
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExport('html')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-paper-hover text-ink-primary transition-colors flex items-start gap-2.5 cursor-pointer group"
+                >
+                  <div className="p-1.5 rounded-md bg-blue-500/10 text-blue-500 shrink-0 mt-0.5">
+                    <FileHtml size={16} weight="bold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xs group-hover:text-accent transition-colors">
+                      HTML Mandiri (Offline)
+                    </div>
+                    <div className="text-[10px] text-ink-muted leading-tight">
+                      Berkas tunggal dengan font & gaya terintegrasi
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExport('epub')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-paper-hover text-ink-primary transition-colors flex items-start gap-2.5 cursor-pointer group"
+                >
+                  <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 shrink-0 mt-0.5">
+                    <Book size={16} weight="bold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-xs group-hover:text-accent transition-colors">
+                      Buku Digital EPUB
+                    </div>
+                    <div className="text-[10px] text-ink-muted leading-tight">
+                      Format e-reader untuk Kindle, Kobo & Apple Books
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Trash or Restore Action */}
           {activeNote.isTrash ? (
@@ -927,4 +1055,41 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
       />
     </main>
   )
+}
+
+function markdownToHtml(md: string): string {
+  let html = md
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    .replace(/`([^`]+)`/gim, '<code>$1</code>')
+    .replace(/\[\[(.*?)\]\]/gim, '<strong>$1</strong>')
+    .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2">$1</a>')
+    .replace(/^\s*[-*]\s+\[x\]\s*(.*$)/gim, '<div>☑ $1</div>')
+    .replace(/^\s*[-*]\s+\[ \]\s*(.*$)/gim, '<div>☐ $1</div>')
+    .replace(/^\s*[-*]\s+(.*$)/gim, '<li>$1</li>')
+
+  html = html.replace(/```([\s\S]*?)```/gm, (_match, p1) => {
+    return `<pre><code>${p1.trim()}</code></pre>`
+  })
+
+  const blocks = html.split(/\n\s*\n/)
+  return blocks
+    .map((b) => {
+      const trimmed = b.trim()
+      if (
+        trimmed.startsWith('<h') ||
+        trimmed.startsWith('<pre') ||
+        trimmed.startsWith('<blockquote') ||
+        trimmed.startsWith('<li') ||
+        trimmed.startsWith('<div')
+      ) {
+        return trimmed
+      }
+      return `<p>${trimmed.replace(/\n/g, '<br/>')}</p>`
+    })
+    .join('\n')
 }
