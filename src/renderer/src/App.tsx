@@ -66,50 +66,63 @@ export const AppContent: React.FC = () => {
     return undefined
   }, [config.hasCompletedTour, notes.length, completeTour])
 
-  // Global Keyboard Shortcuts
+  // Global Keyboard Shortcuts (Capture Phase)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey
 
-      // Ctrl/Cmd + K: Command Palette
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'k') {
+      // F11: Toggle Fullscreen
+      if (e.key === 'F11') {
         e.preventDefault()
+        window.electronAPI?.toggleFullScreen()
+        return
+      }
+
+      // Ctrl/Cmd + K: Command Palette
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'k' || e.code === 'KeyK')) {
+        e.preventDefault()
+        e.stopPropagation()
         setIsCommandPaletteOpen((prev) => !prev)
         return
       }
 
-      // Ctrl/Cmd + /: Shortcuts Modal
-      if (isCmdOrCtrl && e.key === '/') {
+      // Ctrl/Cmd + / or ?: Shortcuts Modal
+      if (isCmdOrCtrl && (e.key === '/' || e.key === '?' || e.code === 'Slash')) {
         e.preventDefault()
+        e.stopPropagation()
         setIsShortcutsOpen((prev) => !prev)
         return
       }
 
       // Ctrl/Cmd + M: Markdown Guide
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'm') {
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'm' || e.code === 'KeyM')) {
         e.preventDefault()
+        e.stopPropagation()
         setIsMarkdownGuideOpen((prev) => !prev)
         return
       }
 
       // Ctrl/Cmd + N: New Note
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'n') {
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'n' || e.code === 'KeyN')) {
         e.preventDefault()
+        e.stopPropagation()
         createNote()
         return
       }
 
       // Ctrl/Cmd + B: Toggle Sidebar
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'b') {
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'b' || e.code === 'KeyB')) {
         e.preventDefault()
+        e.stopPropagation()
         toggleSidebar()
         return
       }
 
       // Ctrl/Cmd + P: Toggle Pin on active note
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'p') {
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'p' || e.code === 'KeyP')) {
         if (activeNoteId) {
           e.preventDefault()
+          e.stopPropagation()
           togglePinNote(activeNoteId)
         }
         return
@@ -119,21 +132,24 @@ export const AppContent: React.FC = () => {
       if (isCmdOrCtrl && e.key === 'Backspace') {
         if (activeNoteId) {
           e.preventDefault()
+          e.stopPropagation()
           softDeleteNote(activeNoteId)
         }
         return
       }
 
       // Ctrl/Cmd + Shift + T: Toggle Theme
-      if (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === 't') {
+      if (isCmdOrCtrl && e.shiftKey && (e.key.toLowerCase() === 't' || e.code === 'KeyT')) {
         e.preventDefault()
+        e.stopPropagation()
         setTheme(config.theme === 'warm-paper' ? 'matte-obsidian' : 'warm-paper')
         return
       }
 
       // Ctrl/Cmd + Shift + F: Cycle Font
-      if (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === 'f') {
+      if (isCmdOrCtrl && e.shiftKey && (e.key.toLowerCase() === 'f' || e.code === 'KeyF')) {
         e.preventDefault()
+        e.stopPropagation()
         const fonts: ('editorial' | 'sans' | 'mono')[] = ['editorial', 'sans', 'mono']
         const nextIndex = (fonts.indexOf(config.font) + 1) % fonts.length
         setFont(fonts[nextIndex])
@@ -141,8 +157,9 @@ export const AppContent: React.FC = () => {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Capture phase guarantees shortcuts are received even when typing in textarea or inputs
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [
     activeNoteId,
     config.font,

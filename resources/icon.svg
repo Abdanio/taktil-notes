@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient: Warm Terracotta -->
+    <linearGradient id="terracottaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E07A5F" />
+      <stop offset="100%" stop-color="#D95D39" />
+    </linearGradient>
+
+    <!-- Paper Sheet Drop Shadow -->
+    <filter id="tactileShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#1C1B18" flood-opacity="0.22" />
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1C1B18" flood-opacity="0.12" />
+    </filter>
+
+    <filter id="sheetShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#1C1B18" flood-opacity="0.14" />
+    </filter>
+  </defs>
+
+  <!-- App Icon Squircle Container -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#terracottaGrad)" />
+  
+  <!-- Subtle Inner Border Highlight -->
+  <rect x="34" y="34" width="444" height="444" rx="110" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="3" />
+
+  <!-- Layer 3: Rotated Background Paper (Tilted Left -6deg) -->
+  <g transform="translate(256, 260) rotate(-7) translate(-140, -170)">
+    <rect width="280" height="340" rx="28" fill="#E2DDD5" filter="url(#sheetShadow)" />
+  </g>
+
+  <!-- Layer 2: Middle Paper Sheet (Tilted Right +4deg) -->
+  <g transform="translate(256, 260) rotate(5) translate(-140, -170)">
+    <rect width="280" height="340" rx="28" fill="#EFECE6" filter="url(#sheetShadow)" />
+    <!-- Light Lines on Middle Sheet -->
+    <rect x="36" y="52" width="100" height="10" rx="5" fill="#D95D39" opacity="0.4" />
+    <rect x="36" y="82" width="180" height="7" rx="3.5" fill="#C2BCB2" opacity="0.6" />
+    <rect x="36" y="104" width="140" height="7" rx="3.5" fill="#C2BCB2" opacity="0.6" />
+  </g>
+
+  <!-- Layer 1: Foreground Alabaster Paper Sheet (Upright, Focused) -->
+  <g transform="translate(116, 96)" filter="url(#tactileShadow)">
+    <rect width="280" height="340" rx="28" fill="#F8F6F1" />
+    <rect width="280" height="340" rx="28" fill="none" stroke="#E2DDD5" stroke-width="2" />
+
+    <!-- Tactile Nib / Pen Emblem at Top Center -->
+    <path d="M140 40 L164 80 L148 80 L148 116 L132 116 L132 80 L116 80 Z" fill="#D95D39" />
+    <circle cx="140" cy="72" r="4" fill="#F8F6F1" />
+    <line x1="140" y1="76" x2="140" y2="108" stroke="#F8F6F1" stroke-width="2" stroke-linecap="round" />
+
+    <!-- Editorial Prose Lines -->
+    <rect x="42" y="148" width="196" height="10" rx="5" fill="#1C1B18" opacity="0.85" />
+    <rect x="42" y="174" width="170" height="8" rx="4" fill="#6E6A63" opacity="0.75" />
+    <rect x="42" y="196" width="186" height="8" rx="4" fill="#6E6A63" opacity="0.75" />
+    <rect x="42" y="218" width="130" height="8" rx="4" fill="#6E6A63" opacity="0.75" />
+
+    <!-- Interactive Living Checklist Row -->
+    <rect x="42" y="252" width="18" height="18" rx="5" fill="#D95D39" />
+    <path d="M46 261 L50 265 L56 257" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="70" y="257" width="120" height="8" rx="4" fill="#6E6A63" opacity="0.5" />
+    <line x1="70" y1="261" x2="190" y2="261" stroke="#9E998F" stroke-width="1.5" />
+
+    <!-- Bottom Accent Ribbon Mark -->
+    <rect x="42" y="292" width="48" height="8" rx="4" fill="#D95D39" opacity="0.9" />
+  </g>
+</svg>

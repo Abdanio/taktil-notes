@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, protocol, Notification } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, protocol, Notification, Menu } from 'electron'
 import { join, extname } from 'path'
 import { promises as fs } from 'fs'
 import type { AppConfig, Folder, Note } from '../preload/index.d'
@@ -108,6 +108,17 @@ async function createWindow(): Promise<BrowserWindow> {
   window.on('enter-full-screen', notifyWindowState)
   window.on('leave-full-screen', notifyWindowState)
 
+  // Direct keyboard handling for native accelerators
+  window.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+
+    // F11: Fullscreen toggle
+    if (input.key === 'F11') {
+      window.setFullScreen(!window.isFullScreen())
+      event.preventDefault()
+    }
+  })
+
   window.on('ready-to-show', () => {
     window.show()
     notifyWindowState()
@@ -137,6 +148,9 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(async () => {
+  // Remove default Electron menu so accelerators (Ctrl+N, Ctrl+W, Ctrl+P) are not blocked
+  Menu.setApplicationMenu(null)
+
   // Protocol handler for note-asset://
   protocol.handle('note-asset', async (request) => {
     try {
