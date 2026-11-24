@@ -1,7 +1,7 @@
 <div align="center">
 
 # 🖋️ Taktil Notes
-### *Bespoke, Local-First Desktop Notes Application for Craftspersons*
+### *A Bespoke, Local-First Desktop Notes Application for Craftspersons*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-34.x-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
@@ -11,88 +11,87 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 
 <p align="center">
-  Aplikasi catatan desktop lokal (<em>local-first</em>) berkinerja native tinggi dengan visual yang halus, bebas dari pola desain generik ("AI slop"), dan responsif terhadap sentuhan serta pendengaran Anda.
+  A high-performance, local-first desktop notes app crafted with physical spring physics, synthesized acoustic chimes, bespoke typography, and zero generic "AI slop" UI patterns.
 </p>
 
-[Fitur Utama](#-fitur-utama) •
-[Manifesto Desain](#-manifesto-desain-anti-ai-slop) •
-[Teknologi](#-arsitektur--teknologi) •
-[Instalasi](#-instalasi--menjalankan) •
-[Pintasan Keyboard](#-pintasan-keyboard) •
-[Panduan Kontribusi](#-panduan-berkontribusi)
+[Key Features](#-key-features) •
+[Design Manifesto](#-anti-ai-slop-design-manifesto) •
+[Architecture](#-architecture--stack) •
+[Installation](#-getting-started) •
+[Keyboard Shortcuts](#-keyboard-shortcuts) •
+[Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 💡 Filosofi & Nama: Mengapa "Taktil"?
+## 💡 The Philosophy: Why "Taktil"?
 
-Kata **Taktil** (*Tactile*) berakar dari kemampuan indra peraba dalam merasakan tekstur fisik, bobot, dan getaran nyata dari sebuah objek. 
+The word **Taktil** (*Tactile*) originates from the sense of touch — feeling real physical texture, weight, and responsive resistance.
 
-Di era di mana sebagian besar perangkat lunak catatan modern terasa dingin, datar, berbasis cloud lambat, dan penuh dengan pola antarmuka generik buatan AI yang tidak berkarakter, **Taktil Notes** diciptakan untuk mengembalikan kehangatan kertas fisik:
-- **Kenyamanan Visual**: Gradien hangat kertas Alabaster dengan tekstur fraktal mikro.
-- **Umpan Balik Taktil**: Fisika pegas (*spring physics*) nyata saat menyeret kartu catatan.
-- **Umpan Balik Auditori**: Lonceng akustik marimba yang disintesis langsung melalui Web Audio API tanpa berkas rekaman eksternal.
-- **Kedaulatan Data**: Semua catatan tersimpan secara lokal dan atomik di perangkat Anda.
-
----
-
-## ✨ Fitur Utama
-
-### 1. 🗂️ Ruang Kerja Asimetris 3 Kolom
-- **Kolom 1 — Sidebar (210px)**: Area drag jendela frameless, filter cepat (*Semua Catatan*, *Disematkan*, *Sampah*), folder berwarna dengan indikator jumlah, tombol pengalih jenis huruf, pengalih tema, serta akses ke panduan.
-- **Kolom 2 — Indeks Catatan (270px)**: Pencarian teks instan, tombol pembuatan cepat (*split-button* dengan pemilih ikon langsung), menu titik tiga (`...`) pada kartu, serta kartu catatan bersudut `rounded-xl`.
-- **Kolom 3 — Kanvas Menulis Bebas Distraksi (1fr)**: Area penulisan selebar `max-w-[68ch]` yang ergonomis untuk kenyamanan membaca jangka panjang.
-
-### 2. ⚡ Interaksi Taktil & Fisika Animasi
-- **Living Checklists**: Kotak centang `- [ ]` / `- [x]` interaktif memicu micro-bounce (`scale: [0.85, 1.2, 1]`) dan garis coret teks (*strikethrough*) yang bergerak mulus dari kiri ke kanan selama `200ms`.
-- **Drag & Drop Berbobot (`@dnd-kit`)**: Kartu catatan yang ditarik memiliki elevasi `<DragOverlay>` dengan `scale: 1.03`, kemiringan `-1.5deg`, dan bayangan berlapis `shadow-2xl`. Settle drop diredam dengan fisika pegas (`stiffness: 450, damping: 28`).
-- **Target Folder Magnetik**: Mengarahkan catatan ke atas folder memicu pembesaran folder (`scale: 1.08`) dan mengubah ikon ke bobot `duotone`.
-- **Status Kosong Berparalaks (Parallax Empty State)**: Tumpukan lembaran kertas 3D SVG bergeser dan miring merespons pergerakan kursor mouse saat suatu folder kosong.
-
-### 3. 🔔 Pengingat Desktop Native & Sintesis Suara Lonceng
-- **Web Audio Chime**: Menggunakan osilator harmonik untuk memainkan akor marimba nada C5-C6 yang menenangkan saat pengingat berbunyi.
-- **Integrasi OS Native**: Menggunakan Electron `Notification` API yang dipadukan dengan `app.setAppUserModelId` sehingga notifikasi diproses langsung oleh pusat notifikasi Windows/macOS. Mengklik notifikasi akan mengembalikan fokus jendela dan membuka catatan terkait.
-
-### 4. 🖼️ Penanganan Berkas & Protokol Aman `note-asset://`
-- **Jatuhkan File dari OS (Drag & Drop)**: Jatuhkan berkas gambar (`.png`, `.jpg`, `.jpeg`, `.webp`) atau dokumen (`.md`, `.txt`) dari file explorer ke kanvas.
-- **Protokol Privileged**: Gambar disimpan secara lokal ke direktori aman `userData/assets/` dan dirender menggunakan skema protokol khusus `note-asset://filename.ext` yang kebal terhadap pembatasan CSP.
-
-### 5. 📖 Panduan Sintaksis Markdown Bawaan
-- Modal panduan interaktif yang memuat format Heading, Checklist, Penekanan Teks, Blok Kode, Kutipan, Tautan, dan Garis Pembatas.
-- Dilengkapi tombol **"Salin"** dan tombol **"Sisipkan"** untuk langsung menyuntikkan template sintaks ke catatan aktif.
-
-### 6. 🎨 Ikon Catatan Kustom (*Bebas AI Slop*)
-- Menghilangkan pola klise garis strip warna di sisi kiri kartu catatan.
-- Menggantikannya dengan lencana ikon yang dapat diubah sesuai topik catatan (*Ide Baru, Riset, Koding, Bacaan, Kopi, Target, Proyek, dll.*) melalui modal pemilih ikon.
+In an era where modern productivity apps often feel cold, cloud-dependent, sluggish, and bloated with generic, cookie-cutter AI interface tropes, **Taktil Notes** was created to bring back the tangible warmth of fine paper:
+- **Visual Warmth**: Alabaster paper palettes with a subtle `2.5%` SVG fractal noise grain overlay.
+- **Physical Motion**: Real spring physics (`stiffness: 450, damping: 28`) when dragging cards, and micro-bounce checklists.
+- **Acoustic Feedback**: Harmonious marimba chimes synthesized directly in real time via the Web Audio API without relying on external media files.
+- **Data Sovereignty**: 100% offline, local-first persistence with atomic file writes preventing data corruption.
 
 ---
 
-## 🎨 Manifesto Desain (Anti-AI-Slop)
+## ✨ Key Features
 
-| Prinsip | Yang Dihindari (AI Slop) | Pendekatan Taktil Notes |
+### 1. 🗂️ Asymmetric 3-Column Workspace
+- **Column 1 — Sidebar (210px)**: Frameless drag header, quick filters (*All Notes*, *Pinned*, *Trash*), color-coded droppable folders with item badges, live font switchers, theme toggles, and help triggers.
+- **Column 2 — Note Index List (270px)**: Instant fuzzy search, split-button quick create with custom icon picker, 3-dots note menu, and `rounded-xl` cards with Fraunces titles and timestamps.
+- **Column 3 — Distraction-Free Canvas (1fr)**: Ergonomic centered writing area constrained to `max-w-[68ch]`, equipped with live Markdown rendering, hybrid writing mode, and custom window controls.
+
+### 2. ⚡ Tactile Motion & Micro-Interactions
+- **Living Checklists**: Interactive `- [ ]` / `- [x]` task checkboxes trigger an expressive micro-bounce (`scale: [0.85, 1.2, 1]`) paired with a smooth 200ms left-to-right animated strikethrough.
+- **Weighted Drag & Drop (`@dnd-kit`)**: Dragged cards elevate into a `<DragOverlay>` with `scale: 1.03`, `-1.5deg` tilt, and deep layered `shadow-2xl` shadows. Drops settle with spring physics.
+- **Magnetic Folder Drop Targets**: Hovering a dragged note over a sidebar folder expands the folder (`scale: 1.08`) and transforms its icon weight to `duotone`.
+- **Parallax Empty State**: Minimalist layered 3D paper stack SVG that shifts and tilts proportionally in response to your mouse coordinates when a folder has no notes.
+
+### 3. 🔔 Native Desktop Reminders & Acoustic Chimes
+- **Web Audio Chimes**: Synthesizes a calming C5-C6 ascending arpeggio on timer completion and desktop alerts.
+- **OS Action Center Integration**: Dispatches native notifications via Electron's `Notification` API. Clicking the notification restores window focus and opens the corresponding note immediately.
+
+### 4. 🖼️ Local Asset Handling (`note-asset://`)
+- **OS File Drag & Drop**: Drag `.png`, `.jpg`, `.jpeg`, `.webp`, `.md`, or `.txt` files directly onto the editor canvas.
+- **Privileged Protocol**: Images are copied locally to `userData/assets/` and served via `note-asset://filename.ext`, immune to standard CSP restrictions.
+
+### 5. 📖 Built-In Interactive Markdown Guide
+- Accessible anytime via `Ctrl + M` or the editor toolbar. Includes visual examples for Headings, Tasks, Fenced Code Blocks, Quotes, Links, Images, and Dividers with one-click **"Copy"** and **"Insert"** actions.
+
+### 6. 🎨 Bespoke Note Identity (*Anti-AI-Slop*)
+- Replaces generic colored edge stripes with expressive, customizable note icon badges (*Idea, Project, Code, Coffee, Target, Reading, Personal, etc.*).
+- Editable via the 3-dots card menu or directly alongside the title in the editor canvas.
+
+---
+
+## 🎨 Anti-"AI Slop" Design Manifesto
+
+| Design Aspect | Typical Generic Pattern | Taktil Notes Craftsmanship |
 | :--- | :--- | :--- |
-| **Tipografi** | Inter, Roboto, atau font sistem standar tanpa hierarki | `'Fraunces'` (Headings editorial), `'Plus Jakarta Sans'` (Body UI), `'JetBrains Mono'` (Tabular Code) |
-| **Warna Latar** | `#FFFFFF` silau atau `#000000` hitam pekat | *Warm Paper* (`#F8F6F1` + tekstur fractal noise `2.5%`) & *Matte Obsidian* (`#181715`) |
-| **Gradien** | Gradien ungu/biru generik SaaS | Warna aksen bumi: *Terracotta Orange* (`#D95D39`) & *Soft Coral* (`#E07A5F`) |
-| **Sentuhan** | Kotak datar kaku tanpa umpan balik fisik | Elevasi berlapis, fisika pegas, dan respons audio Web Audio API |
+| **Typography** | Generic Roboto / Inter without distinction | `'Fraunces'` (Editorial Headings), `'Plus Jakarta Sans'` (UI Prose), `'JetBrains Mono'` (Tabular Code) |
+| **Canvas Color** | Blinding `#FFFFFF` or pitch `#000000` | *Warm Paper* (`#F8F6F1` with fractal paper grain) & *Matte Obsidian* (`#181715`) |
+| **Accent Hue** | Electric purple / generic SaaS blue gradients | Earth tones: *Terracotta Orange* (`#D95D39`) & *Soft Coral* (`#E07A5F`) |
+| **Tactile Feel** | Flat, lifeless rectangles with static clicks | Layered depth, spring physics settling, and synthesized acoustic feedback |
 
 ---
 
-## 🛠️ Arsitektur & Teknologi
+## 🛠️ Architecture & Stack
 
 ```
 desktop-notes-app/
 ├── src/
 │   ├── main/
-│   │   └── index.ts          # Proses Utama Electron (IPC, Window, Protocol, Atomic Storage)
+│   │   └── index.ts          # Main Process (IPC, Frameless Window, note-asset://, Atomic Storage)
 │   ├── preload/
-│   │   ├── index.ts          # Bridge Aman contextBridge (IPC Client)
-│   │   └── index.d.ts        # Definisi Tipe window.electronAPI
+│   │   ├── index.ts          # contextBridge IPC API
+│   │   └── index.d.ts        # Typed window.electronAPI definitions
 │   └── renderer/
-│       ├── index.html        # HTML Root dengan Google Fonts (Fraunces, Jakarta Sans, JetBrains)
+│       ├── index.html        # HTML Root with Google Fonts (Fraunces, Jakarta Sans, JetBrains)
 │       └── src/
-│           ├── components/   # Komponen UI (Sidebar, NoteList, Editor, Modals)
+│           ├── components/   # UI Modules (Sidebar, NoteList, Editor, Modals)
 │           │   ├── Editor.tsx
 │           │   ├── NoteList.tsx
 │           │   ├── NoteCard.tsx
@@ -101,119 +100,113 @@ desktop-notes-app/
 │           │   ├── NoteIconPicker.tsx
 │           │   ├── CommandPalette.tsx
 │           │   └── ShortcutsModal.tsx
-│           ├── context/      # NotesContext & State Store Atomik
-│           ├── lib/          # Utilitas Format Tanggal, Suara Akustik, dan Tur driver.js
-│           ├── types/        # Definisi Tipe Data Renderer
-│           ├── globals.css   # Variabel Tema & Tekstur Kertas
-│           └── main.tsx      # Entrypoint React 18
-├── electron.vite.config.ts   # Konfigurasi Build Multi-Target
-├── tailwind.config.ts        # Konfigurasi Desain & Token Warna
+│           ├── context/      # NotesContext State Store & Atomic Sync
+│           ├── lib/          # Sound Synthesizer, Date Helpers, driver.js Tour
+│           ├── types/        # Core Data Interfaces
+│           ├── globals.css   # CSS Theme Tokens & Tactile Paper Grain
+│           └── main.tsx      # React 18 Entrypoint
+├── electron.vite.config.ts   # Multi-target Vite Bundler Configuration
+├── electron-builder.yml      # Desktop Installer Configuration (Windows, Mac, Linux)
 └── package.json
 ```
 
 ---
 
-## 🚀 Instalasi & Menjalankan
+## 🚀 Getting Started
 
-### Prasyarat
-- [Node.js](https://nodejs.org/) versi `18.x` atau lebih baru (`v24.x` direkomendasikan).
-- Manajer paket `npm` (atau `pnpm` / `yarn`).
-- Git terpasang di sistem operasi Anda.
+### Prerequisites
+- [Node.js](https://nodejs.org/) version `18.x` or later (`v20.x` or `v24.x` recommended).
+- `npm` package manager (or `pnpm` / `yarn`).
+- Git installed on your system.
 
-### 1. Kloning Repositori
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/username-anda/taktil-notes.git
+git clone https://github.com/Abdanio/taktil-notes.git
 cd taktil-notes
 ```
 
-### 2. Pasang Dependensi
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 3. Jalankan Mode Pengembang (Hot-Reload)
+### 3. Run in Development Mode (Hot-Reload)
 ```bash
 npm run dev
 ```
-Aplikasi Electron akan otomatis terbuka dengan Vite Hot Module Replacement (HMR).
+The frameless Electron application will launch with Vite Hot Module Replacement (HMR).
 
-### 4. Pemeriksaan Tipe Data (Typecheck)
+### 4. Run TypeScript Verification
 ```bash
 npm run typecheck
 ```
 
-### 5. Kompilasi Bundel Produksi
+### 5. Build for Production
 ```bash
 npm run build
 ```
 
-### 6. Memaketkan Installer Desktop (Distribusi)
-- **Windows (Portable / NSIS)**:
+### 6. Package Desktop Installers
+- **Windows (NSIS Installer & Portable .exe)**:
   ```bash
   npm run build:win
   ```
-- **macOS (DMG / Zip)**:
+- **macOS (DMG & Zip)**:
   ```bash
   npm run build:mac
   ```
-- **Linux (AppImage / Deb)**:
+- **Linux (AppImage & Deb)**:
   ```bash
   npm run build:linux
   ```
 
 ---
 
-## ⌨️ Pintasan Keyboard
+## ⌨️ Keyboard Shortcuts
 
-Aplikasi ini dirancang untuk navigasi cepat tanpa perlu mengangkat tangan dari keyboard:
+Designed for mouse-free, friction-free productivity:
 
-| Pintasan | Aksi |
+| Shortcut | Description |
 | :--- | :--- |
-| `Ctrl / Cmd + N` | Membuat catatan baru secara instan |
-| `Ctrl / Cmd + K` | Membuka Palet Perintah Cepat (*Command Palette*) |
-| `Ctrl / Cmd + M` | Membuka Panduan Sintaksis Markdown |
-| `Ctrl / Cmd + B` | Menyembunyikan / Menampilkan Sidebar |
-| `Ctrl / Cmd + /` | Membuka Lembar Contekan Pintasan Keyboard (3D Keycaps) |
-| `Ctrl / Cmd + P` | Menyematkan (*Pin*) / Melepas Sematan Catatan Aktif |
-| `Ctrl / Cmd + Backspace` | Memindahkan catatan aktif ke folder Sampah |
-| `Ctrl / Cmd + Shift + T` | Mengalihkan tema (*Warm Paper* $\leftrightarrow$ *Matte Obsidian*) |
-| `Ctrl / Cmd + Shift + F` | Mengganti mode tipografi (*Editorial* $\rightarrow$ *Sans* $\rightarrow$ *Mono*) |
-| `F11` / Tombol Toolbar | Beralih ke Mode Layar Penuh (*Fullscreen*) |
+| `Ctrl / Cmd + N` | Instantly create a new note |
+| `Ctrl / Cmd + K` | Open Quick Command Palette |
+| `Ctrl / Cmd + M` | Open Markdown Syntax Guide |
+| `Ctrl / Cmd + B` | Toggle Sidebar visibility |
+| `Ctrl / Cmd + /` | Open 3D Physical Keycaps Cheat Sheet |
+| `Ctrl / Cmd + P` | Pin / unpin active note |
+| `Ctrl / Cmd + Backspace` | Move active note to Trash |
+| `Ctrl / Cmd + Shift + T` | Toggle theme (*Warm Paper* $\leftrightarrow$ *Matte Obsidian*) |
+| `Ctrl / Cmd + Shift + F` | Cycle typography (*Editorial* $\rightarrow$ *Sans* $\rightarrow$ *Mono*) |
+| `F11` / Toolbar Icon | Toggle Fullscreen Mode |
 
 ---
 
-## 🤝 Panduan Berkontribusi
+## 🤝 Contributing
 
-Kami sangat menyambut kontribusi dari komunitas! Baik berupa perbaikan bug, usulan fitur, perbaikan terjemahan, maupun peningkatan performa.
+Contributions are welcomed! Whether it is fixing a bug, suggesting a new feature, refining translations, or optimizing performance:
 
-### Alur Kontribusi:
-1. **Fork** repositori ini ke akun GitHub Anda.
-2. Buat branch fitur baru dari `main`:
+1. **Fork** this repository.
+2. Create a feature branch from `main`:
    ```bash
-   git checkout -b feature/nama-fitur-keren
+   git checkout -b feature/your-feature-name
    ```
-3. Lakukan perubahan kode dengan mematuhi prinsip desain anti-AI-slop.
-4. Pastikan verifikasi tipe data dan build lolos:
+3. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/):
+   ```bash
+   git commit -m "feat: add export to plain text option"
+   ```
+4. Verify types and builds pass cleanly:
    ```bash
    npm run typecheck
    npm run build
    ```
-5. Commit perubahan Anda dengan format [Conventional Commits](https://www.conventionalcommits.org/):
-   ```bash
-   git commit -m "feat: menambahkan dukungan ekspor catatan ke pdf"
-   ```
-6. Dorong branch Anda ke fork:
-   ```bash
-   git push origin feature/nama-fitur-keren
-   ```
-7. Buka **Pull Request** di repositori utama dan jelaskan perubahan yang Anda buat.
+5. Push to your branch and open a **Pull Request**.
 
 ---
 
-## 📄 Lisensi
+## 📄 License
 
-Proyek ini dirilis di bawah lisensi [MIT](LICENSE). Anda bebas menggunakan, memodifikasi, dan mendistribusikannya untuk kebutuhan pribadi maupun komersial.
+This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this software for personal and commercial projects.
 
 <div align="center">
-  <sub>Dibuat dengan dedikasi pada keahlian kriya perangkat lunak desktop.</sub>
+  <sub>Crafted with passion for tactile desktop software engineering.</sub>
 </div>
