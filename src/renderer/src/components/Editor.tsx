@@ -28,12 +28,14 @@ import {
   Export,
   FilePdf,
   FileHtml,
-  Book
+  Book,
+  PencilSimpleLine
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { NoteIconRenderer, NoteIconPickerModal } from './NoteIconPicker'
+import { SketchCanvasModal } from './SketchCanvasModal'
 import { toast } from 'sonner'
 import { cn } from '../lib/utils'
 import { soundEffects } from '../lib/sound'
@@ -71,6 +73,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
   const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
+  const [isSketchModalOpen, setIsSketchModalOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [wikiQuery, setWikiQuery] = useState<string | null>(null)
@@ -463,6 +466,16 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
           >
             <BookOpen size={13} weight="bold" className="text-accent" />
             <span className="hidden sm:inline">Panduan Markdown</span>
+          </button>
+
+          {/* Freehand Sketch Canvas Trigger */}
+          <button
+            onClick={() => setIsSketchModalOpen(true)}
+            title="Buka Kanvas Coretan Tangan (Sketsa Bebas)"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-paper-sidebar hover:bg-paper-hover border border-paper-border text-[11px] font-medium text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
+          >
+            <PencilSimpleLine size={13} weight="bold" className="text-accent" />
+            <span className="hidden sm:inline">Sketsa</span>
           </button>
         </div>
 
@@ -1051,6 +1064,15 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
         onConfirm={() => {
           permanentlyDeleteNote(activeNote.id)
           setIsPermanentDeleteDialogOpen(false)
+        }}
+      />
+
+      {/* Freehand Sketch Canvas Modal */}
+      <SketchCanvasModal
+        isOpen={isSketchModalOpen}
+        onClose={() => setIsSketchModalOpen(false)}
+        onInsertSketch={(snippet) => {
+          updateNoteContent(activeNote.id, activeNote.content + snippet, activeNote.title)
         }}
       />
     </main>

@@ -53,7 +53,6 @@ export function setupExporter(getMainWindow: () => BrowserWindow | null): void {
         printBackground: true,
         pageSize: 'A4',
         margins: {
-          marginType: 'custom',
           top: 1,
           bottom: 1,
           left: 1,

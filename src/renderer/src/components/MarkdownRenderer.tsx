@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Copy, Checks, ArrowSquareOut } from '@phosphor-icons/react'
+import katex from 'katex'
+import { DiagramRenderer } from './DiagramRenderer'
 import { cn } from '../lib/utils'
 
 interface MarkdownRendererProps {
@@ -29,8 +31,64 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   let codeLanguage = ''
   let codeBlockStartIdx = 0
 
+  let inMathBlock = false
+  let mathBuffer: string[] = []
+  let mathBlockStartIdx = 0
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
+
+    // Multiline KaTeX Math Block
+    if (line.trim().startsWith('$$')) {
+      if (inMathBlock) {
+        // Close math block
+        const fullFormula = mathBuffer.join('\n')
+        let html = ''
+        try {
+          html = katex.renderToString(fullFormula, { displayMode: true, throwOnError: false })
+        } catch {
+          html = `<span class="text-rose-500 font-mono text-xs">${fullFormula}</span>`
+        }
+        elements.push(
+          <div
+            key={`math-${mathBlockStartIdx}`}
+            className="my-4 py-3.5 px-4 rounded-xl border border-paper-border/60 bg-paper-sidebar/50 text-center overflow-x-auto select-all shadow-xs"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )
+        inMathBlock = false
+        mathBuffer = []
+        continue
+      } else if (line.trim().length > 2 && line.trim().endsWith('$$')) {
+        // Single-line display math e.g. $$E = mc^2$$
+        const singleFormula = line.trim().slice(2, -2).trim()
+        let html = ''
+        try {
+          html = katex.renderToString(singleFormula, { displayMode: true, throwOnError: false })
+        } catch {
+          html = `<span class="text-rose-500 font-mono text-xs">${singleFormula}</span>`
+        }
+        elements.push(
+          <div
+            key={`math-${i}`}
+            className="my-4 py-3.5 px-4 rounded-xl border border-paper-border/60 bg-paper-sidebar/50 text-center overflow-x-auto select-all shadow-xs"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )
+        continue
+      } else {
+        // Open multiline math block
+        inMathBlock = true
+        mathBuffer = []
+        mathBlockStartIdx = i
+        continue
+      }
+    }
+
+    if (inMathBlock) {
+      mathBuffer.push(line)
+      continue
+    }
 
     // Fenced Code Block Detection
     if (line.startsWith('```')) {
@@ -38,35 +96,42 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         // Close code block
         const fullCode = codeBuffer.join('\n')
         const blockIdx = codeBlockStartIdx
-        elements.push(
-          <div
-            key={`code-${blockIdx}`}
-            className="my-4 rounded-xl border border-paper-border bg-paper-sidebar overflow-hidden text-xs shadow-sm"
-          >
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-paper-border/60 bg-paper-hover/30 text-[11px] text-ink-muted font-mono">
-              <span>{codeLanguage || 'code'}</span>
-              <button
-                onClick={() => handleCopyCode(fullCode, blockIdx)}
-                className="inline-flex items-center gap-1 hover:text-ink-primary transition-colors py-0.5 px-1.5 rounded hover:bg-paper-card"
-              >
-                {copiedIndex === blockIdx ? (
-                  <>
-                    <Checks size={13} weight="bold" className="text-emerald-500" />
-                    <span className="text-emerald-500 font-medium">Tersalin</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={13} weight="bold" />
-                    <span>Salin</span>
-                  </>
-                )}
-              </button>
+
+        if (codeLanguage.toLowerCase() === 'mermaid') {
+          elements.push(
+            <DiagramRenderer key={`mermaid-${blockIdx}`} code={fullCode} />
+          )
+        } else {
+          elements.push(
+            <div
+              key={`code-${blockIdx}`}
+              className="my-4 rounded-xl border border-paper-border bg-paper-sidebar overflow-hidden text-xs shadow-sm"
+            >
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-paper-border/60 bg-paper-hover/30 text-[11px] text-ink-muted font-mono">
+                <span>{codeLanguage || 'code'}</span>
+                <button
+                  onClick={() => handleCopyCode(fullCode, blockIdx)}
+                  className="inline-flex items-center gap-1 hover:text-ink-primary transition-colors py-0.5 px-1.5 rounded hover:bg-paper-card"
+                >
+                  {copiedIndex === blockIdx ? (
+                    <>
+                      <Checks size={13} weight="bold" className="text-emerald-500" />
+                      <span className="text-emerald-500 font-medium">Tersalin</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} weight="bold" />
+                      <span>Salin</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="p-3.5 overflow-x-auto font-code text-ink-primary leading-relaxed">
+                <code>{fullCode}</code>
+              </pre>
             </div>
-            <pre className="p-3.5 overflow-x-auto font-code text-ink-primary leading-relaxed">
-              <code>{fullCode}</code>
-            </pre>
-          </div>
-        )
+          )
+        }
         inCodeBlock = false
         codeBuffer = []
         codeLanguage = ''
@@ -273,6 +338,26 @@ function renderFormattedInline(
       continue
     }
 
+    // Inline math: $formula$
+    const mathMatch = remaining.match(/^\$([^$\n]+)\$/)
+    if (mathMatch) {
+      let html = ''
+      try {
+        html = katex.renderToString(mathMatch[1], { displayMode: false, throwOnError: false })
+      } catch {
+        html = `<span class="text-rose-500 font-mono text-xs">${mathMatch[1]}</span>`
+      }
+      parts.push(
+        <span
+          key={`inline-math-${keyIdx++}`}
+          className="inline-block px-1 select-all"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      )
+      remaining = remaining.slice(mathMatch[0].length)
+      continue
+    }
+
     // Inline code: `code`
     const codeMatch = remaining.match(/^`([^`]+)`/)
     if (codeMatch) {
@@ -331,7 +416,7 @@ function renderFormattedInline(
     }
 
     // Regular character
-    const nextSpecial = remaining.search(/[`*_\[]/)
+    const nextSpecial = remaining.search(/[`*_\$\[]/)
     if (nextSpecial === -1) {
       parts.push(remaining)
       break
