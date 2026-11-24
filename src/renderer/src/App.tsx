@@ -17,6 +17,7 @@ import { Editor } from './components/Editor'
 import { NoteCard } from './components/NoteCard'
 import { CommandPalette } from './components/CommandPalette'
 import { ShortcutsModal } from './components/ShortcutsModal'
+import { MarkdownGuideModal } from './components/MarkdownGuideModal'
 import { startOnboardingTour } from './lib/tour'
 
 export const AppContent: React.FC = () => {
@@ -30,6 +31,7 @@ export const AppContent: React.FC = () => {
     reorderNotes,
     createNote,
     activeNoteId,
+    insertMarkdownSnippet,
     togglePinNote,
     softDeleteNote,
     setTheme,
@@ -40,6 +42,7 @@ export const AppContent: React.FC = () => {
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false)
 
   // Configure PointerSensor with distance constraint to not clash with titlebar drag or normal clicks
   const sensors = useSensors(
@@ -79,6 +82,13 @@ export const AppContent: React.FC = () => {
       if (isCmdOrCtrl && e.key === '/') {
         e.preventDefault()
         setIsShortcutsOpen((prev) => !prev)
+        return
+      }
+
+      // Ctrl/Cmd + M: Markdown Guide
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'm') {
+        e.preventDefault()
+        setIsMarkdownGuideOpen((prev) => !prev)
         return
       }
 
@@ -193,7 +203,10 @@ export const AppContent: React.FC = () => {
               transition={{ duration: 0.18, ease: 'easeInOut' }}
               className="h-full overflow-hidden shrink-0"
             >
-              <Sidebar onOpenShortcuts={() => setIsShortcutsOpen(true)} />
+              <Sidebar
+                onOpenShortcuts={() => setIsShortcutsOpen(true)}
+                onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -202,7 +215,7 @@ export const AppContent: React.FC = () => {
         <NoteList />
 
         {/* Column 3: Distraction-Free Editor (1fr) */}
-        <Editor />
+        <Editor onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)} />
 
         {/* Tactile Drag Overlay with Spring Physics & Deep Shadow */}
         <DragOverlay
@@ -233,12 +246,20 @@ export const AppContent: React.FC = () => {
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
         />
 
         {/* Keyboard Shortcuts Modal (Ctrl+/) */}
         <ShortcutsModal
           isOpen={isShortcutsOpen}
           onClose={() => setIsShortcutsOpen(false)}
+        />
+
+        {/* Markdown Syntax Guide Modal (Ctrl+M) */}
+        <MarkdownGuideModal
+          isOpen={isMarkdownGuideOpen}
+          onClose={() => setIsMarkdownGuideOpen(false)}
+          onInsertMarkdown={insertMarkdownSnippet}
         />
 
         {/* Stackable Sonner Toasts */}

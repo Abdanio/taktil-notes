@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import type { Note, Folder, AppConfig, FilterType } from '../types'
 import { toast } from 'sonner'
+import { soundEffects } from '../lib/sound'
 
 interface NotesContextType {
   notes: Note[]
@@ -16,8 +17,10 @@ interface NotesContextType {
   setActiveFilter: (filter: FilterType) => void
   setSearchQuery: (query: string) => void
   setActiveNoteId: (id: string | null) => void
-  createNote: (folderId?: string | null) => Note
+  createNote: (folderId?: string | null, icon?: string) => Note
   updateNoteContent: (id: string, content: string, title?: string) => void
+  updateNoteIcon: (id: string, icon: string) => void
+  insertMarkdownSnippet: (snippet: string) => void
   togglePinNote: (id: string) => void
   softDeleteNote: (id: string) => void
   restoreNote: (id: string) => void
@@ -154,6 +157,17 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return undefined
   }, [])
 
+  // Listen for Notification Chime events from Main process
+  useEffect(() => {
+    if (window.electronAPI?.onNotificationChime) {
+      const cleanup = window.electronAPI.onNotificationChime(() => {
+        soundEffects.playReminderChime()
+      })
+      return cleanup
+    }
+    return undefined
+  }, [])
+
   // Apply Theme & Font to Document Body
   useEffect(() => {
     const root = document.documentElement
@@ -196,7 +210,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Create Note
   const createNote = useCallback(
-    (folderId?: string | null): Note => {
+    (folderId?: string | null, icon = 'Note'): Note => {
       let targetFolderId = folderId
       if (targetFolderId === undefined) {
         // If current filter is a folder ID, place note inside it
@@ -212,6 +226,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         title: 'Catatan Baru',
         content: '',
         folderId: targetFolderId ?? null,
+        icon,
         isPinned: false,
         isTrash: false,
         createdAt: Date.now(),
@@ -229,6 +244,17 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return newNote
     },
     [activeFilter, persistNotesDebounced]
+  )
+
+  const updateNoteIcon = useCallback(
+    (id: string, icon: string) => {
+      setNotes((prev) => {
+        const next = prev.map((n) => (n.id === id ? { ...n, icon, updatedAt: Date.now() } : n))
+        persistNotesDebounced(next)
+        return next
+      })
+    },
+    [persistNotesDebounced]
   )
 
   // Update Note Content & Title
@@ -476,6 +502,23 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const timer = setTimeout(() => {
         const note = notes.find((n) => n.id === noteId)
         const noteTitle = note?.title || 'Catatan Anda'
+
+        // Play auditory chime via Web Audio API
+        soundEffects.playReminderChime()
+
+        // Show rich in-app toast notification with direct link
+        toast.info(`🔔 Pengingat: ${noteTitle}`, {
+          description: label,
+          duration: 8000,
+          action: {
+            label: 'Buka',
+            onClick: () => {
+              setActiveNoteId(noteId)
+              setActiveFilter('all')
+            }
+          }
+        })
+
         if (window.electronAPI) {
           window.electronAPI.showNotification({
             title: `Pengingat: ${noteTitle}`,
@@ -496,6 +539,27 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.success(`Pengingat disetel: ${label}`)
     },
     [notes, persistNotesDebounced]
+  )
+
+  const insertMarkdownSnippet = useCallback(
+    (snippet: string) => {
+      if (!activeNoteId) return
+      setNotes((prev) => {
+        const next = prev.map((n) => {
+          if (n.id !== activeNoteId) return n
+          const currentContent = n.content.trim()
+          const newContent = currentContent ? `${currentContent}\n\n${snippet}` : snippet
+          return {
+            ...n,
+            content: newContent,
+            updatedAt: Date.now()
+          }
+        })
+        persistNotesDebounced(next)
+        return next
+      })
+    },
+    [activeNoteId, persistNotesDebounced]
   )
 
   const clearNoteReminder = useCallback(
@@ -543,6 +607,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setActiveNoteId,
         createNote,
         updateNoteContent,
+        updateNoteIcon,
+        insertMarkdownSnippet,
         togglePinNote,
         softDeleteNote,
         restoreNote,

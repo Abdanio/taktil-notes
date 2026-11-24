@@ -2,7 +2,8 @@ export interface Note {
   id: string
   title: string
   content: string
-  folderId: string | null // null = no folder / unorganized
+  folderId: string | null
+  icon?: string
   isPinned: boolean
   isTrash: boolean
   createdAt: number
@@ -16,7 +17,7 @@ export interface Note {
 export interface Folder {
   id: string
   name: string
-  color: string // hex code or color identifier
+  color: string
   icon?: string
 }
 
@@ -40,15 +41,19 @@ export interface ElectronAPI {
   
   // Window controls
   minimize: () => Promise<void>
-  maximize: () => Promise<void>
+  maximize: () => Promise<boolean>
+  toggleFullScreen: () => Promise<boolean>
   close: () => Promise<void>
   setAlwaysOnTop: (alwaysOnTop: boolean) => Promise<boolean>
   isAlwaysOnTop: () => Promise<boolean>
   isMaximized: () => Promise<boolean>
+  isFullScreen: () => Promise<boolean>
+  onWindowStateChanged: (callback: (state: { isMaximized: boolean; isFullScreen: boolean }) => void) => () => void
 
   // Notifications
   showNotification: (options: { title: string; body: string; noteId?: string }) => Promise<void>
   onNotificationClicked: (callback: (data: { noteId?: string }) => void) => () => void
+  onNotificationChime: (callback: () => void) => () => void
 }
 
 declare global {

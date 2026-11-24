@@ -5,12 +5,14 @@ import {
   Plus,
   Trash,
   X,
-  Funnel
+  Funnel,
+  Smiley
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { SortableNoteCard } from './SortableNoteCard'
 import { ParallaxEmptyState } from './ParallaxEmptyState'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import { NoteIconPickerModal } from './NoteIconPicker'
 
 export const NoteList: React.FC = () => {
   const {
@@ -27,6 +29,7 @@ export const NoteList: React.FC = () => {
   } = useNotes()
 
   const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false)
+  const [isNewNoteIconModalOpen, setIsNewNoteIconModalOpen] = useState(false)
 
   // Filter notes based on active filter
   const filteredBySection = notes.filter((note) => {
@@ -86,16 +89,25 @@ export const NoteList: React.FC = () => {
             </span>
           </div>
 
-          {/* Quick Create Note Button */}
+          {/* Quick Create Note Button with Custom Icon Selector */}
           {!isTrashView ? (
-            <button
-              onClick={() => createNote()}
-              title="Buat Catatan Baru (Ctrl+N)"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-white text-xs font-medium shadow-sm hover:bg-accent-hover transition-colors active:scale-[0.98]"
-            >
-              <Plus size={14} weight="bold" />
-              <span>Baru</span>
-            </button>
+            <div className="flex items-center shadow-xs">
+              <button
+                onClick={() => createNote()}
+                title="Buat Catatan Baru (Ctrl+N)"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-l-lg bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-colors active:scale-[0.98]"
+              >
+                <Plus size={14} weight="bold" />
+                <span>Baru</span>
+              </button>
+              <button
+                onClick={() => setIsNewNoteIconModalOpen(true)}
+                title="Pilih Ikon untuk Catatan Baru"
+                className="px-1.5 py-1 rounded-r-lg bg-accent/90 hover:bg-accent text-white text-xs border-l border-white/25 transition-colors cursor-pointer"
+              >
+                <Smiley size={14} weight="bold" />
+              </button>
+            </div>
           ) : (
             sortedNotes.length > 0 && (
               <button
@@ -185,6 +197,15 @@ export const NoteList: React.FC = () => {
           </SortableContext>
         )}
       </div>
+
+      {/* Modal to pick icon for a new note */}
+      <NoteIconPickerModal
+        isOpen={isNewNoteIconModalOpen}
+        onClose={() => setIsNewNoteIconModalOpen(false)}
+        onSelectIcon={(iconName) => {
+          createNote(undefined, iconName)
+        }}
+      />
 
       {/* Confirmation modal for emptying trash */}
       <DeleteConfirmDialog

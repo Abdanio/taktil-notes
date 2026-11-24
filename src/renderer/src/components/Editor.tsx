@@ -14,15 +14,24 @@ import {
   UploadSimple,
   Clock,
   CheckCircle,
-  Warning
+  CornersOut,
+  CornersIn,
+  BookOpen,
+  SpeakerHigh
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import { NoteIconRenderer, NoteIconPickerModal } from './NoteIconPicker'
 import { toast } from 'sonner'
 import { cn } from '../lib/utils'
+import { soundEffects } from '../lib/sound'
 
-export const Editor: React.FC = () => {
+interface EditorProps {
+  onOpenMarkdownGuide: () => void
+}
+
+export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const {
     activeNote,
     isSaving,
@@ -30,6 +39,7 @@ export const Editor: React.FC = () => {
     toggleSidebar,
     toggleAlwaysOnTop,
     updateNoteContent,
+    updateNoteIcon,
     softDeleteNote,
     restoreNote,
     permanentlyDeleteNote,
@@ -41,20 +51,49 @@ export const Editor: React.FC = () => {
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isReminderOpen, setIsReminderOpen] = useState(false)
   const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false)
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isFullScreen, setIsFullScreen] = useState(false)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Track window maximization state
+  // Track window state changes in real time
   useEffect(() => {
-    async function checkMax(): Promise<void> {
-      if (window.electronAPI) {
-        const max = await window.electronAPI.isMaximized()
-        setIsMaximized(max)
-      }
+    if (window.electronAPI) {
+      window.electronAPI.isMaximized().then(setIsMaximized)
+      window.electronAPI.isFullScreen().then(setIsFullScreen)
+
+      const cleanup = window.electronAPI.onWindowStateChanged((state) => {
+        setIsMaximized(state.isMaximized)
+        setIsFullScreen(state.isFullScreen)
+      })
+      return cleanup
     }
-    checkMax()
+    return undefined
   }, [])
+
+  // Window Controls
+  const handleMinimize = (): void => {
+    window.electronAPI?.minimize()
+  }
+
+  const handleMaximize = async (): Promise<void> => {
+    if (window.electronAPI) {
+      const state = await window.electronAPI.maximize()
+      setIsMaximized(state)
+    }
+  }
+
+  const handleToggleFullScreen = async (): Promise<void> => {
+    if (window.electronAPI) {
+      const state = await window.electronAPI.toggleFullScreen()
+      setIsFullScreen(state)
+    }
+  }
+
+  const handleClose = (): void => {
+    window.electronAPI?.close()
+  }
 
   if (!activeNote) {
     return (
@@ -69,28 +108,36 @@ export const Editor: React.FC = () => {
           </button>
           <div className="app-no-drag flex items-center gap-1">
             <button
-              onClick={() => {
-                window.electronAPI?.minimize()
-              }}
-              className="w-7 h-7 flex items-center justify-center text-ink-secondary hover:bg-paper-hover rounded"
+              onClick={handleMinimize}
+              title="Kecilkan"
+              className="w-8 h-8 flex items-center justify-center text-ink-secondary hover:bg-paper-hover rounded-lg transition-colors cursor-pointer"
             >
-              <Minus size={14} />
+              <Minus size={14} weight="bold" />
             </button>
             <button
-              onClick={() => {
-                window.electronAPI?.maximize()
-              }}
-              className="w-7 h-7 flex items-center justify-center text-ink-secondary hover:bg-paper-hover rounded"
+              onClick={handleMaximize}
+              title={isMaximized ? 'Pulihkan' : 'Perbesar Jendela'}
+              className="w-8 h-8 flex items-center justify-center text-ink-secondary hover:bg-paper-hover rounded-lg transition-colors cursor-pointer"
             >
-              <Square size={12} />
+              <Square size={13} weight={isMaximized ? 'fill' : 'bold'} />
             </button>
             <button
-              onClick={() => {
-                window.electronAPI?.close()
-              }}
-              className="w-7 h-7 flex items-center justify-center text-ink-secondary hover:bg-red-500 hover:text-white rounded"
+              onClick={handleToggleFullScreen}
+              title={isFullScreen ? 'Keluar Layar Penuh' : 'Layar Penuh (Fullscreen)'}
+              className="w-8 h-8 flex items-center justify-center text-ink-secondary hover:bg-paper-hover rounded-lg transition-colors cursor-pointer"
             >
-              <X size={14} />
+              {isFullScreen ? (
+                <CornersIn size={14} weight="bold" />
+              ) : (
+                <CornersOut size={14} weight="bold" />
+              )}
+            </button>
+            <button
+              onClick={handleClose}
+              title="Tutup"
+              className="w-8 h-8 flex items-center justify-center text-ink-secondary hover:bg-red-500 hover:text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <X size={14} weight="bold" />
             </button>
           </div>
         </div>
@@ -113,6 +160,7 @@ export const Editor: React.FC = () => {
 
   // Handle Living Checkbox Toggle in Markdown View
   const handleToggleCheckbox = (lineIndex: number, newChecked: boolean): void => {
+    soundEffects.playChecklistBounce()
     const lines = activeNote.content.split('\n')
     if (lines[lineIndex] !== undefined) {
       lines[lineIndex] = lines[lineIndex].replace(
@@ -133,7 +181,6 @@ export const Editor: React.FC = () => {
   const handleDragLeave = (e: React.DragEvent): void => {
     e.preventDefault()
     e.stopPropagation()
-    // Check if moving outside container
     if (e.currentTarget.contains(e.relatedTarget as Node)) return
     setIsDraggingFile(false)
   }
@@ -149,7 +196,6 @@ export const Editor: React.FC = () => {
     for (const file of files) {
       const ext = file.name.split('.').pop()?.toLowerCase()
 
-      // Handle Image Files
       if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext || '')) {
         const reader = new FileReader()
         reader.onload = async () => {
@@ -171,7 +217,6 @@ export const Editor: React.FC = () => {
         }
         reader.readAsDataURL(file)
       } else if (['md', 'txt'].includes(ext || '')) {
-        // Handle Markdown & Text Files
         const text = await file.text()
         const appended = `${activeNote.content}\n\n<!-- Impor dari ${file.name} -->\n${text}`
         updateNoteContent(activeNote.id, appended, activeNote.title)
@@ -180,21 +225,6 @@ export const Editor: React.FC = () => {
         toast.warning(`Format file .${ext} tidak didukung. Gunakan gambar atau file teks/md.`)
       }
     }
-  }
-
-  // Window Controls
-  const handleMinimize = (): void => {
-    window.electronAPI?.minimize()
-  }
-  const handleMaximize = async (): Promise<void> => {
-    if (window.electronAPI) {
-      await window.electronAPI.maximize()
-      const max = await window.electronAPI.isMaximized()
-      setIsMaximized(max)
-    }
-  }
-  const handleClose = (): void => {
-    window.electronAPI?.close()
   }
 
   return (
@@ -207,17 +237,16 @@ export const Editor: React.FC = () => {
     >
       {/* Top Toolbar */}
       <div className="h-10 app-drag-region flex items-center justify-between px-3.5 border-b border-paper-border/60 bg-paper-canvas/80 backdrop-blur-sm z-20 shrink-0">
-        {/* Left: Sidebar Toggle & Save Indicator */}
+        {/* Left: Sidebar Toggle & Auto-save Status */}
         <div className="app-no-drag flex items-center gap-3">
           <button
             onClick={toggleSidebar}
             title="Alihkan Sidebar (Ctrl+B)"
-            className="w-7 h-7 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors"
+            className="w-7 h-7 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
           >
             <SidebarIcon size={16} weight="regular" />
           </button>
 
-          {/* Auto-save non-intrusive status */}
           <div className="flex items-center gap-1.5 text-xs text-ink-muted">
             <span
               className={cn(
@@ -231,45 +260,57 @@ export const Editor: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Mode Switcher (Tulis / Baca / Bersama) */}
-        <div className="app-no-drag flex items-center rounded-lg bg-paper-sidebar p-0.5 border border-paper-border text-[11px]">
-          <button
-            onClick={() => setMode('write')}
-            className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors',
-              mode === 'write'
-                ? 'bg-paper-card text-ink-primary shadow-xs'
-                : 'text-ink-secondary hover:text-ink-primary'
-            )}
-          >
-            <PencilSimple size={12} weight="bold" />
-            <span>Tulis</span>
-          </button>
+        {/* Center: Mode Switcher & Markdown Guide */}
+        <div className="app-no-drag flex items-center gap-2">
+          <div className="flex items-center rounded-lg bg-paper-sidebar p-0.5 border border-paper-border text-[11px]">
+            <button
+              onClick={() => setMode('write')}
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer',
+                mode === 'write'
+                  ? 'bg-paper-card text-ink-primary shadow-xs'
+                  : 'text-ink-secondary hover:text-ink-primary'
+              )}
+            >
+              <PencilSimple size={12} weight="bold" />
+              <span>Tulis</span>
+            </button>
 
-          <button
-            onClick={() => setMode('hybrid')}
-            className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors',
-              mode === 'hybrid'
-                ? 'bg-paper-card text-ink-primary shadow-xs'
-                : 'text-ink-secondary hover:text-ink-primary'
-            )}
-          >
-            <CheckCircle size={12} weight="bold" />
-            <span>Interaktif</span>
-          </button>
+            <button
+              onClick={() => setMode('hybrid')}
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer',
+                mode === 'hybrid'
+                  ? 'bg-paper-card text-ink-primary shadow-xs'
+                  : 'text-ink-secondary hover:text-ink-primary'
+              )}
+            >
+              <CheckCircle size={12} weight="bold" />
+              <span>Interaktif</span>
+            </button>
 
+            <button
+              onClick={() => setMode('preview')}
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer',
+                mode === 'preview'
+                  ? 'bg-paper-card text-ink-primary shadow-xs'
+                  : 'text-ink-secondary hover:text-ink-primary'
+              )}
+            >
+              <Eye size={12} weight="bold" />
+              <span>Pratinjau</span>
+            </button>
+          </div>
+
+          {/* Quick Markdown Guide Trigger */}
           <button
-            onClick={() => setMode('preview')}
-            className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors',
-              mode === 'preview'
-                ? 'bg-paper-card text-ink-primary shadow-xs'
-                : 'text-ink-secondary hover:text-ink-primary'
-            )}
+            onClick={onOpenMarkdownGuide}
+            title="Buka Panduan Sintaksis Markdown"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-paper-sidebar hover:bg-paper-hover border border-paper-border text-[11px] font-medium text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
           >
-            <Eye size={12} weight="bold" />
-            <span>Pratinjau</span>
+            <BookOpen size={13} weight="bold" className="text-accent" />
+            <span className="hidden sm:inline">Panduan Markdown</span>
           </button>
         </div>
 
@@ -279,11 +320,11 @@ export const Editor: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setIsReminderOpen(!isReminderOpen)}
-              title="Setel Pengingat"
+              title="Setel Pengingat Desktop"
               className={cn(
-                'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
+                'w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
                 activeNote.reminder
-                  ? 'text-accent bg-accent/10'
+                  ? 'text-accent bg-accent/15'
                   : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
               )}
             >
@@ -292,7 +333,7 @@ export const Editor: React.FC = () => {
 
             {/* Reminder Popover */}
             {isReminderOpen && (
-              <div className="absolute right-0 top-9 w-52 bg-paper-card border border-paper-border rounded-xl p-3 shadow-xl z-50 text-xs">
+              <div className="absolute right-0 top-9 w-60 bg-paper-card border border-paper-border rounded-xl p-3 shadow-2xl z-50 text-xs">
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-paper-border">
                   <span className="font-semibold text-ink-primary flex items-center gap-1">
                     <Clock size={13} weight="bold" />
@@ -308,8 +349,9 @@ export const Editor: React.FC = () => {
 
                 {activeNote.reminder ? (
                   <div className="space-y-2">
-                    <div className="p-2 rounded bg-accent/10 text-accent text-[11px] font-medium">
-                      Aktif: {activeNote.reminder.label}
+                    <div className="p-2 rounded bg-accent/10 text-accent text-[11px] font-medium flex items-center justify-between">
+                      <span>Aktif: {activeNote.reminder.label}</span>
+                      <SpeakerHigh size={13} weight="bold" />
                     </div>
                     <button
                       onClick={() => {
@@ -325,38 +367,54 @@ export const Editor: React.FC = () => {
                   <div className="space-y-1">
                     <button
                       onClick={() => {
-                        setNoteReminder(activeNote.id, 10 * 1000, 'Uji coba pengingat (10 detik)')
+                        soundEffects.playChecklistBounce()
+                        setNoteReminder(
+                          activeNote.id,
+                          10 * 1000,
+                          'Uji coba suara & notifikasi desktop (10 detik)'
+                        )
                         setIsReminderOpen(false)
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors flex items-center justify-between"
+                      className="w-full text-left px-2.5 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors flex items-center justify-between"
                     >
-                      <span>10 detik</span>
-                      <span className="text-[10px] text-accent">Uji Coba</span>
+                      <div>
+                        <div className="font-medium">10 Detik</div>
+                        <div className="text-[10px] text-ink-muted">Uji coba suara & notifikasi</div>
+                      </div>
+                      <span className="text-[10px] text-accent font-semibold px-1 py-0.5 rounded bg-accent/10">
+                        Tes Suara
+                      </span>
                     </button>
+
                     <button
                       onClick={() => {
+                        soundEffects.playChecklistBounce()
                         setNoteReminder(activeNote.id, 15 * 60 * 1000, 'Dalam 15 menit')
                         setIsReminderOpen(false)
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors"
+                      className="w-full text-left px-2.5 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors font-medium"
                     >
                       15 Menit
                     </button>
+
                     <button
                       onClick={() => {
+                        soundEffects.playChecklistBounce()
                         setNoteReminder(activeNote.id, 60 * 60 * 1000, 'Dalam 1 jam')
                         setIsReminderOpen(false)
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors"
+                      className="w-full text-left px-2.5 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors font-medium"
                     >
                       1 Jam
                     </button>
+
                     <button
                       onClick={() => {
+                        soundEffects.playChecklistBounce()
                         setNoteReminder(activeNote.id, 24 * 60 * 60 * 1000, 'Besok hari')
                         setIsReminderOpen(false)
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors"
+                      className="w-full text-left px-2.5 py-1.5 rounded hover:bg-paper-hover text-ink-primary transition-colors font-medium"
                     >
                       1 Hari (Besok)
                     </button>
@@ -376,7 +434,7 @@ export const Editor: React.FC = () => {
                 : 'Aktifkan Mode Melayang (Always on Top)'
             }
             className={cn(
-              'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
+              'w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
               config.alwaysOnTop
                 ? 'text-accent bg-accent/15'
                 : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
@@ -395,14 +453,14 @@ export const Editor: React.FC = () => {
               <button
                 onClick={() => restoreNote(activeNote.id)}
                 title="Pulihkan Catatan"
-                className="w-7 h-7 rounded-lg text-emerald-600 hover:bg-emerald-500/10 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-lg text-emerald-600 hover:bg-emerald-500/10 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <ArrowCounterClockwise size={15} weight="bold" />
               </button>
               <button
                 onClick={() => setIsPermanentDeleteDialogOpen(true)}
                 title="Hapus Permanen"
-                className="w-7 h-7 rounded-lg text-red-600 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-lg text-red-600 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <Trash size={15} weight="bold" />
               </button>
@@ -411,7 +469,7 @@ export const Editor: React.FC = () => {
             <button
               onClick={() => softDeleteNote(activeNote.id)}
               title="Pindahkan ke Sampah"
-              className="w-7 h-7 rounded-lg text-ink-secondary hover:text-red-500 hover:bg-paper-hover flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-lg text-ink-secondary hover:text-red-500 hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
             >
               <Trash size={15} weight="regular" />
             </button>
@@ -422,21 +480,32 @@ export const Editor: React.FC = () => {
             <button
               onClick={handleMinimize}
               title="Kecilkan"
-              className="w-7 h-7 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
             >
               <Minus size={14} weight="bold" />
             </button>
             <button
               onClick={handleMaximize}
-              title="Perbesar"
-              className="w-7 h-7 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors"
+              title={isMaximized ? 'Pulihkan Jendela' : 'Perbesar Jendela'}
+              className="w-8 h-8 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
             >
-              <Square size={12} weight={isMaximized ? 'fill' : 'bold'} />
+              <Square size={13} weight={isMaximized ? 'fill' : 'bold'} />
+            </button>
+            <button
+              onClick={handleToggleFullScreen}
+              title={isFullScreen ? 'Keluar Layar Penuh' : 'Layar Penuh (Fullscreen)'}
+              className="w-8 h-8 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
+            >
+              {isFullScreen ? (
+                <CornersIn size={14} weight="bold" />
+              ) : (
+                <CornersOut size={14} weight="bold" />
+              )}
             </button>
             <button
               onClick={handleClose}
               title="Tutup"
-              className="w-7 h-7 rounded-lg text-ink-secondary hover:text-white hover:bg-red-500 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg text-ink-secondary hover:text-white hover:bg-red-500 flex items-center justify-center transition-colors cursor-pointer"
             >
               <X size={14} weight="bold" />
             </button>
@@ -445,28 +514,36 @@ export const Editor: React.FC = () => {
       </div>
 
       {/* Main Centered Writing Canvas (`max-w-[68ch] mx-auto`) */}
-      <div
-        id="editor-drop-area"
-        className="flex-1 overflow-y-auto px-6 py-8"
-      >
+      <div id="editor-drop-area" className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-[68ch] mx-auto flex flex-col min-h-full">
-          {/* Note Title Input */}
-          <input
-            value={activeNote.title}
-            onChange={handleTitleChange}
-            placeholder="Judul Catatan..."
-            disabled={activeNote.isTrash}
-            className="w-full bg-transparent font-heading text-3xl font-bold tracking-tight text-ink-primary placeholder:text-ink-muted/50 outline-none pb-4 border-b border-paper-border/40 mb-6"
-          />
+          {/* Note Icon Button & Title Input Row */}
+          <div className="flex items-center gap-3.5 pb-4 border-b border-paper-border/40 mb-6">
+            <button
+              type="button"
+              onClick={() => setIsIconPickerOpen(true)}
+              title="Klik untuk memilih ikon catatan"
+              className="w-11 h-11 rounded-xl bg-accent/15 text-accent hover:bg-accent/25 flex items-center justify-center shrink-0 transition-all shadow-xs cursor-pointer active:scale-95"
+            >
+              <NoteIconRenderer iconName={activeNote.icon} size={24} weight="duotone" />
+            </button>
 
-          {/* Editor Body depending on selected mode */}
+            <input
+              value={activeNote.title}
+              onChange={handleTitleChange}
+              placeholder="Judul Catatan..."
+              disabled={activeNote.isTrash}
+              className="w-full bg-transparent font-heading text-3xl font-bold tracking-tight text-ink-primary placeholder:text-ink-muted/50 outline-none"
+            />
+          </div>
+
+          {/* Editor Body */}
           {mode === 'write' ? (
             <textarea
               ref={textareaRef}
               value={activeNote.content}
               onChange={handleContentChange}
               disabled={activeNote.isTrash}
-              placeholder="Tulis pemikiran Anda di sini... Mendukung Markdown, daftar tugas (- [ ]), blok kode, dan gambar."
+              placeholder="Tulis pemikiran Anda di sini... Mendukung Markdown (# Judul, **tebal**, - [ ] tugas, blok kode, dll)."
               className="w-full flex-1 bg-transparent text-sm leading-relaxed text-ink-primary placeholder:text-ink-muted font-body outline-none resize-none min-h-[450px]"
             />
           ) : mode === 'preview' ? (
@@ -477,9 +554,9 @@ export const Editor: React.FC = () => {
               />
             </div>
           ) : (
-            /* Hybrid View: Markdown interactive checkboxes + direct text editing */
+            /* Hybrid View */
             <div className="w-full flex-1 space-y-6 min-h-[450px]">
-              <div className="p-4 rounded-xl border border-paper-border/70 bg-paper-card/50 shadow-xs">
+              <div className="p-4 rounded-xl border border-paper-border/70 bg-paper-card/60 shadow-xs">
                 <div className="flex items-center justify-between mb-2 pb-2 border-b border-paper-border/50 text-[11px] text-ink-muted">
                   <span className="font-semibold text-accent">Tampilan Interaktif</span>
                   <span>Centang tugas langsung di bawah</span>
@@ -490,18 +567,27 @@ export const Editor: React.FC = () => {
                 />
               </div>
 
-              {/* Direct editor beneath */}
+              {/* Direct editor beneath with monospace font */}
               <div className="pt-2">
-                <label className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-2">
-                  Edit Teks Mentah (Markdown)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block">
+                    Edit Teks Mentah (Markdown)
+                  </label>
+                  <button
+                    onClick={onOpenMarkdownGuide}
+                    className="text-[11px] text-accent hover:underline flex items-center gap-1"
+                  >
+                    <BookOpen size={12} weight="bold" />
+                    <span>Lihat Sintaks</span>
+                  </button>
+                </div>
                 <textarea
                   ref={textareaRef}
                   value={activeNote.content}
                   onChange={handleContentChange}
                   disabled={activeNote.isTrash}
                   placeholder="Ketik markdown..."
-                  className="w-full bg-paper-card/40 p-4 rounded-xl border border-paper-border text-sm leading-relaxed text-ink-primary font-body outline-none focus:border-accent resize-y min-h-[160px]"
+                  className="w-full bg-paper-card/50 p-4 rounded-xl border border-paper-border text-xs leading-relaxed text-ink-primary font-mono outline-none focus:border-accent resize-y min-h-[180px]"
                 />
               </div>
             </div>
@@ -524,6 +610,14 @@ export const Editor: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Note Icon Picker Modal */}
+      <NoteIconPickerModal
+        isOpen={isIconPickerOpen}
+        onClose={() => setIsIconPickerOpen(false)}
+        currentIcon={activeNote.icon}
+        onSelectIcon={(iconName) => updateNoteIcon(activeNote.id, iconName)}
+      />
 
       {/* Permanent delete confirmation dialog */}
       <DeleteConfirmDialog

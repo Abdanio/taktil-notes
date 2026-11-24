@@ -96,7 +96,8 @@ body {
 }
 
 .app-no-drag {
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
 }
 
 /* Custom Minimalist Scrollbars */

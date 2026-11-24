@@ -12,14 +12,17 @@ import {
   TextT,
   Question,
   Keyboard,
+  BookOpen,
   X
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
-import type { Folder, FilterType } from '../types'
+import type { FilterType } from '../types'
 import { cn } from '../lib/utils'
+import { soundEffects } from '../lib/sound'
 
 interface SidebarProps {
   onOpenShortcuts: () => void
+  onOpenMarkdownGuide: () => void
 }
 
 const FOLDER_COLORS = ['#D95D39', '#81B29A', '#F2CC8F', '#3D405B', '#E07A5F', '#588157']
@@ -93,7 +96,10 @@ const DroppableSidebarTarget: React.FC<{
   )
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  onOpenShortcuts,
+  onOpenMarkdownGuide
+}) => {
   const {
     notes,
     folders,
@@ -123,6 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
     e.preventDefault()
     if (!newFolderName.trim()) return
     createFolder(newFolderName.trim(), newFolderColor)
+    soundEffects.playChecklistBounce()
     setNewFolderName('')
     setIsAddingFolder(false)
   }
@@ -131,6 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
     const fonts: ('editorial' | 'sans' | 'mono')[] = ['editorial', 'sans', 'mono']
     const nextIndex = (fonts.indexOf(config.font) + 1) % fonts.length
     setFont(fonts[nextIndex])
+    soundEffects.playChecklistBounce()
   }
 
   const getFontLabel = (): string => {
@@ -147,20 +155,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
   return (
     <aside
       id="sidebar-container"
-      className="w-[210px] h-full flex flex-col justify-between bg-paper-sidebar border-r border-paper-border paper-grain select-none relative z-10 shrink-0"
+      className="w-[210px] h-full flex flex-col justify-between bg-paper-sidebar border-r border-paper-border paper-grain select-none relative z-10 shrink-0 overflow-hidden"
     >
-      {/* Top Window Drag Region & Branding */}
-      <div className="flex flex-col">
-        {/* Electron Window Drag Header */}
-        <div className="h-10 app-drag-region flex items-center px-3.5 gap-2 border-b border-paper-border/50">
-          <div className="w-2.5 h-2.5 rounded-full bg-accent shadow-sm shrink-0" />
-          <span className="font-heading text-xs font-bold tracking-tight text-ink-primary">
-            Catatan Taktil
-          </span>
-        </div>
+      {/* 1. Top Window Drag Header */}
+      <div className="h-10 app-drag-region flex items-center px-3.5 gap-2 border-b border-paper-border/50 shrink-0">
+        <div className="w-2.5 h-2.5 rounded-full bg-accent shadow-sm shrink-0" />
+        <span className="font-heading text-xs font-bold tracking-tight text-ink-primary">
+          Catatan Taktil
+        </span>
+      </div>
 
+      {/* 2. Middle Scrollable Region (Filters & Folders) */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-4">
         {/* Quick Nav Filters */}
-        <div className="p-2 space-y-0.5">
+        <div className="space-y-0.5">
           {/* Semua Catatan */}
           <div
             onClick={() => setActiveFilter('all')}
@@ -221,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
             </span>
           </div>
 
-          {/* Sampah (Droppable target for notes) */}
+          {/* Sampah */}
           <DroppableSidebarTarget
             id="trash"
             label="Sampah"
@@ -241,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
         </div>
 
         {/* Folders Section */}
-        <div className="px-2 pt-3 pb-1">
+        <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[10px] font-semibold tracking-wider uppercase text-ink-muted">
               Folder
@@ -255,52 +263,59 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
             </button>
           </div>
 
-          {/* Inline Folder Creation Form */}
+          {/* Refined Inline Folder Form - No Overflow Bug */}
           {isAddingFolder && (
-            <form onSubmit={handleCreateFolder} className="p-2 mb-2 bg-paper-card rounded-lg border border-paper-border text-xs">
+            <form
+              onSubmit={handleCreateFolder}
+              className="p-2.5 mb-2 bg-paper-card rounded-xl border border-paper-border shadow-sm flex flex-col gap-2"
+            >
               <input
                 autoFocus
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="Nama folder..."
-                className="w-full bg-transparent border-b border-paper-border pb-1 mb-2 outline-none text-ink-primary placeholder:text-ink-muted"
+                className="w-full bg-paper-sidebar px-2 py-1 rounded-md border border-paper-border text-xs outline-none focus:border-accent text-ink-primary placeholder:text-ink-muted font-body"
               />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {FOLDER_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setNewFolderColor(c)}
-                      className={cn(
-                        'w-3.5 h-3.5 rounded-full transition-transform',
-                        newFolderColor === c && 'scale-125 ring-1 ring-ink-primary'
-                      )}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center gap-1">
+
+              {/* Color Swatch Picker */}
+              <div className="flex items-center justify-center gap-1.5 py-0.5">
+                {FOLDER_COLORS.map((c) => (
                   <button
+                    key={c}
                     type="button"
-                    onClick={() => setIsAddingFolder(false)}
-                    className="px-1.5 py-0.5 text-[10px] text-ink-muted hover:text-ink-primary"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-2 py-0.5 text-[10px] bg-accent text-white rounded font-medium"
-                  >
-                    Simpan
-                  </button>
-                </div>
+                    onClick={() => setNewFolderColor(c)}
+                    className={cn(
+                      'w-4 h-4 rounded-full transition-transform',
+                      newFolderColor === c
+                        ? 'scale-125 ring-2 ring-accent ring-offset-1 ring-offset-paper-card'
+                        : 'hover:scale-110'
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+
+              {/* Clean Action Buttons */}
+              <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-paper-border/60">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingFolder(false)}
+                  className="py-1 text-[11px] text-ink-secondary hover:text-ink-primary rounded-md border border-paper-border text-center font-medium hover:bg-paper-hover transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="py-1 text-[11px] bg-accent text-white rounded-md font-medium text-center hover:bg-accent-hover transition-colors shadow-xs"
+                >
+                  Simpan
+                </button>
               </div>
             </form>
           )}
 
           {/* Folder List with Droppable Magnetic Target */}
-          <div className="space-y-0.5 max-h-[220px] overflow-y-auto pr-0.5">
+          <div className="space-y-0.5">
             {folders.map((folder) => (
               <DroppableSidebarTarget
                 key={folder.id}
@@ -324,8 +339,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
         </div>
       </div>
 
-      {/* Bottom Actions: Theme, Font, Shortcuts, Guide */}
-      <div className="p-2 border-t border-paper-border/50 flex flex-col gap-1">
+      {/* 3. Bottom Pinned Actions: Theme, Font, Markdown Guide, Shortcuts, Help */}
+      <div className="p-2 border-t border-paper-border/60 bg-paper-sidebar/80 shrink-0 flex flex-col gap-1">
+        {/* Markdown Guide Button */}
+        <button
+          onClick={onOpenMarkdownGuide}
+          title="Panduan Sintaksis Markdown"
+          className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-ink-secondary hover:text-ink-primary hover:bg-paper-hover transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen size={15} weight="bold" className="text-accent" />
+            <span>Panduan Markdown</span>
+          </div>
+        </button>
+
         {/* Font Switcher Button */}
         <button
           onClick={cycleFont}
@@ -343,7 +370,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
 
         {/* Theme Toggle Button */}
         <button
-          onClick={() => setTheme(config.theme === 'warm-paper' ? 'matte-obsidian' : 'warm-paper')}
+          onClick={() => {
+            setTheme(config.theme === 'warm-paper' ? 'matte-obsidian' : 'warm-paper')
+            soundEffects.playChecklistBounce()
+          }}
           title="Alihkan Tema Gelap / Terang"
           className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-ink-secondary hover:text-ink-primary hover:bg-paper-hover transition-colors"
         >
@@ -361,7 +391,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenShortcuts }) => {
         </button>
 
         {/* Shortcuts & Guide Trigger */}
-        <div className="flex items-center justify-between pt-1 px-1">
+        <div className="flex items-center justify-between pt-1 px-1 border-t border-paper-border/40">
           <button
             onClick={onOpenShortcuts}
             title="Pintasan Keyboard (Ctrl+/)"

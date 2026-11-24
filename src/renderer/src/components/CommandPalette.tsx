@@ -12,7 +12,8 @@ import {
   Question,
   Keyboard,
   PushPinSlash,
-  Folder as FolderIcon
+  Folder as FolderIcon,
+  BookOpen
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -20,6 +21,7 @@ interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
   onOpenShortcuts: () => void
+  onOpenMarkdownGuide?: () => void
 }
 
 interface CommandAction {
@@ -34,7 +36,8 @@ interface CommandAction {
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
-  onOpenShortcuts
+  onOpenShortcuts,
+  onOpenMarkdownGuide
 }) => {
   const {
     notes,
@@ -152,6 +155,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       run: () => {
         toggleAlwaysOnTop()
         onClose()
+      }
+    },
+    {
+      id: 'action-markdown-guide',
+      title: 'Buka Panduan Sintaksis Markdown',
+      icon: <BookOpen size={16} weight="bold" className="text-accent" />,
+      section: 'Bantuan',
+      run: () => {
+        onClose()
+        onOpenMarkdownGuide?.()
       }
     },
     {

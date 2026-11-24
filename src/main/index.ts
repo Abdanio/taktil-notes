@@ -3,6 +3,12 @@ import { join, extname } from 'path'
 import { promises as fs } from 'fs'
 import type { AppConfig, Folder, Note } from '../preload/index.d'
 
+// Set AppUserModelId for Windows native notifications to function properly
+const APP_USER_MODEL_ID = 'com.catatan.taktil'
+if (process.platform === 'win32') {
+  app.setAppUserModelId(APP_USER_MODEL_ID)
+}
+
 // 1. Enforce single instance lock
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
@@ -65,7 +71,6 @@ const DEFAULT_CONFIG: AppConfig = {
 
 // Create the main application window
 async function createWindow(): Promise<BrowserWindow> {
-  // Read config early to set proper initial background color (avoid white flash)
   const initialConfig = await readJsonSafely<AppConfig>('config.json', DEFAULT_CONFIG)
   const initialBg = initialConfig.theme === 'matte-obsidian' ? '#181715' : '#F8F6F1'
 
@@ -81,15 +86,31 @@ async function createWindow(): Promise<BrowserWindow> {
     alwaysOnTop: initialConfig.alwaysOnTop,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
     }
   })
 
+  // Broadcast window state changes to renderer for responsive UI controls
+  const notifyWindowState = (): void => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('window:state-changed', {
+        isMaximized: window.isMaximized(),
+        isFullScreen: window.isFullScreen()
+      })
+    }
+  }
+
+  window.on('maximize', notifyWindowState)
+  window.on('unmaximize', notifyWindowState)
+  window.on('enter-full-screen', notifyWindowState)
+  window.on('leave-full-screen', notifyWindowState)
+
   window.on('ready-to-show', () => {
     window.show()
+    notifyWindowState()
   })
 
   window.webContents.setWindowOpenHandler((details) => {
@@ -116,11 +137,10 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(async () => {
-  // Register note-asset:// protocol handler
+  // Protocol handler for note-asset://
   protocol.handle('note-asset', async (request) => {
     try {
       const parsedUrl = new URL(request.url)
-      // Handles both note-asset://filename.jpg and note-asset:///filename.jpg
       const rawName = parsedUrl.hostname
         ? `${parsedUrl.hostname}${parsedUrl.pathname}`
         : parsedUrl.pathname.replace(/^\/+/, '')
@@ -129,7 +149,6 @@ app.whenReady().then(async () => {
       const assetsDir = await getAssetsDir()
       const filePath = join(assetsDir, fileName)
 
-      // Guard against directory traversal
       if (!filePath.startsWith(assetsDir)) {
         return new Response('Forbidden', { status: 403 })
       }
@@ -156,7 +175,6 @@ app.whenReady().then(async () => {
     }
   })
 
-  // Setup IPC Handlers
   setupIpcHandlers()
 
   mainWindow = await createWindow()
@@ -175,7 +193,7 @@ app.on('window-all-closed', () => {
 })
 
 function setupIpcHandlers(): void {
-  // Storage: Notes
+  // Storage Handlers
   ipcMain.handle('storage:loadNotes', async (): Promise<Note[]> => {
     return await readJsonSafely<Note[]>('notes.json', [])
   })
@@ -190,7 +208,6 @@ function setupIpcHandlers(): void {
     }
   })
 
-  // Storage: Folders
   ipcMain.handle('storage:loadFolders', async (): Promise<Folder[]> => {
     return await readJsonSafely<Folder[]>('folders.json', [])
   })
@@ -205,7 +222,6 @@ function setupIpcHandlers(): void {
     }
   })
 
-  // Storage: Config
   ipcMain.handle('storage:loadConfig', async (): Promise<AppConfig> => {
     return await readJsonSafely<AppConfig>('config.json', DEFAULT_CONFIG)
   })
@@ -220,7 +236,7 @@ function setupIpcHandlers(): void {
     }
   })
 
-  // Assets: Save base64 asset locally
+  // Assets Handlers
   ipcMain.handle(
     'assets:saveAsset',
     async (
@@ -229,11 +245,9 @@ function setupIpcHandlers(): void {
     ): Promise<{ success: boolean; assetUrl: string; fileName: string }> => {
       try {
         const assetsDir = await getAssetsDir()
-        // Ensure clean safe filename with timestamp prefix to prevent collisions
         const cleanName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
         const targetPath = join(assetsDir, cleanName)
 
-        // Convert base64 data to buffer
         const cleanBase64 = dataBase64.replace(/^data:image\/\w+;base64,/, '')
         const buffer = Buffer.from(cleanBase64, 'base64')
 
@@ -250,41 +264,64 @@ function setupIpcHandlers(): void {
     }
   )
 
-  // Window Controls
-  ipcMain.handle('window:minimize', () => {
-    mainWindow?.minimize()
+  // Window Controls - Robust against sender window reference
+  ipcMain.handle('window:minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    win?.minimize()
   })
 
-  ipcMain.handle('window:maximize', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize()
+  ipcMain.handle('window:maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!win) return false
+    if (win.isMaximized()) {
+      win.unmaximize()
     } else {
-      mainWindow.maximize()
+      win.maximize()
     }
+    return win.isMaximized()
   })
 
-  ipcMain.handle('window:close', () => {
-    mainWindow?.close()
+  ipcMain.handle('window:fullscreen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!win) return false
+    const targetState = !win.isFullScreen()
+    win.setFullScreen(targetState)
+    return targetState
   })
 
-  ipcMain.handle('window:setAlwaysOnTop', (_, flag: boolean) => {
-    mainWindow?.setAlwaysOnTop(flag)
-    return mainWindow?.isAlwaysOnTop() ?? false
+  ipcMain.handle('window:close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    win?.close()
   })
 
-  ipcMain.handle('window:isAlwaysOnTop', () => {
-    return mainWindow?.isAlwaysOnTop() ?? false
+  ipcMain.handle('window:setAlwaysOnTop', (event, flag: boolean) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    win?.setAlwaysOnTop(flag)
+    return win?.isAlwaysOnTop() ?? false
   })
 
-  ipcMain.handle('window:isMaximized', () => {
-    return mainWindow?.isMaximized() ?? false
+  ipcMain.handle('window:isAlwaysOnTop', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    return win?.isAlwaysOnTop() ?? false
+  })
+
+  ipcMain.handle('window:isMaximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    return win?.isMaximized() ?? false
+  })
+
+  ipcMain.handle('window:isFullScreen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    return win?.isFullScreen() ?? false
   })
 
   // Desktop Notifications
   ipcMain.handle(
     'notification:show',
-    (_, { title, body, noteId }: { title: string; body: string; noteId?: string }) => {
+    (event, { title, body, noteId }: { title: string; body: string; noteId?: string }) => {
+      // Send audio play signal to web contents
+      event.sender.send('notification:chime')
+
       if (Notification.isSupported()) {
         const notif = new Notification({
           title,
@@ -293,10 +330,11 @@ function setupIpcHandlers(): void {
         })
 
         notif.on('click', () => {
-          if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore()
-            mainWindow.focus()
-            mainWindow.webContents.send('notification:clicked', { noteId })
+          const win = BrowserWindow.fromWebContents(event.sender) || mainWindow
+          if (win) {
+            if (win.isMinimized()) win.restore()
+            win.focus()
+            win.webContents.send('notification:clicked', { noteId })
           }
         })
 

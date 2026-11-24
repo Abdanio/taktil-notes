@@ -5,6 +5,7 @@ export interface Note {
   title: string
   content: string
   folderId: string | null
+  icon?: string
   isPinned: boolean
   isTrash: boolean
   createdAt: number

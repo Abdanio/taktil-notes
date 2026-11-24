@@ -1,24 +1,38 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI, Note, Folder, AppConfig } from './index.d'
+import type { ElectronAPI } from './index.d'
 
 const api: ElectronAPI = {
   // Storage
   loadNotes: () => ipcRenderer.invoke('storage:loadNotes'),
-  saveNotes: (notes: Note[]) => ipcRenderer.invoke('storage:saveNotes', notes),
+  saveNotes: (notes) => ipcRenderer.invoke('storage:saveNotes', notes),
   loadFolders: () => ipcRenderer.invoke('storage:loadFolders'),
-  saveFolders: (folders: Folder[]) => ipcRenderer.invoke('storage:saveFolders', folders),
+  saveFolders: (folders) => ipcRenderer.invoke('storage:saveFolders', folders),
   loadConfig: () => ipcRenderer.invoke('storage:loadConfig'),
-  saveConfig: (config: AppConfig) => ipcRenderer.invoke('storage:saveConfig', config),
-  saveAsset: (fileName: string, dataBase64: string) =>
+  saveConfig: (config) => ipcRenderer.invoke('storage:saveConfig', config),
+  saveAsset: (fileName, dataBase64) =>
     ipcRenderer.invoke('assets:saveAsset', { fileName, dataBase64 }),
 
   // Window controls
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
+  toggleFullScreen: () => ipcRenderer.invoke('window:fullscreen'),
   close: () => ipcRenderer.invoke('window:close'),
-  setAlwaysOnTop: (alwaysOnTop: boolean) => ipcRenderer.invoke('window:setAlwaysOnTop', alwaysOnTop),
+  setAlwaysOnTop: (alwaysOnTop) => ipcRenderer.invoke('window:setAlwaysOnTop', alwaysOnTop),
   isAlwaysOnTop: () => ipcRenderer.invoke('window:isAlwaysOnTop'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  onWindowStateChanged: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      data: { isMaximized: boolean; isFullScreen: boolean }
+    ): void => {
+      callback(data)
+    }
+    ipcRenderer.on('window:state-changed', listener)
+    return () => {
+      ipcRenderer.removeListener('window:state-changed', listener)
+    }
+  },
 
   // Notifications
   showNotification: (options) => ipcRenderer.invoke('notification:show', options),
@@ -30,10 +44,18 @@ const api: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('notification:clicked', listener)
     }
+  },
+  onNotificationChime: (callback) => {
+    const listener = (): void => {
+      callback()
+    }
+    ipcRenderer.on('notification:chime', listener)
+    return () => {
+      ipcRenderer.removeListener('notification:chime', listener)
+    }
   }
 }
 
-// Expose safe API to renderer
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electronAPI', api)
@@ -41,6 +63,6 @@ if (process.contextIsolated) {
     console.error('Failed to expose electronAPI:', error)
   }
 } else {
-  // @ts-ignore (fallback if contextIsolation disabled)
+  // @ts-ignore
   window.electronAPI = api
 }
