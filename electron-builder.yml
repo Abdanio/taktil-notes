@@ -1,0 +1,33 @@
+appId: com.taktil.notes
+productName: Taktil Notes
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: resources/icon.svg
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Taktil Notes
+mac:
+  target:
+    - dmg
+    - zip
+  icon: resources/icon.svg
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: resources/icon.svg
