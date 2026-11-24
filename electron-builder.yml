@@ -1,5 +1,9 @@
 appId: com.taktil.notes
 productName: Taktil Notes
+publish:
+  provider: github
+  owner: Abdanio
+  repo: taktil-notes
 directories:
   output: dist
   buildResources: resources
@@ -14,7 +18,7 @@ win:
     - target: portable
       arch:
         - x64
-  icon: resources/icon.svg
+  icon: resources/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
@@ -25,9 +29,9 @@ mac:
   target:
     - dmg
     - zip
-  icon: resources/icon.svg
+  icon: resources/icon.png
 linux:
   target:
     - AppImage
     - deb
-  icon: resources/icon.svg
+  icon: resources/icon.png
