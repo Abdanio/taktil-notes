@@ -1,6 +1,6 @@
 {
   "name": "desktop-notes-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local-first tactile desktop notes application in Electron, React, TypeScript and Tailwind CSS",
   "type": "module",
   "main": "./out/main/index.js",

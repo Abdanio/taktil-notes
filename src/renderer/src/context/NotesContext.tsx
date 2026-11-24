@@ -32,6 +32,8 @@ interface NotesContextType {
   deleteFolder: (folderId: string) => void
   setTheme: (theme: 'warm-paper' | 'matte-obsidian') => void
   setFont: (font: 'editorial' | 'sans' | 'mono') => void
+  setTypingSound: (sound: 'none' | 'thock' | 'typewriter' | 'paper') => void
+  toggleTypewriterMode: () => void
   toggleSidebar: () => void
   toggleAlwaysOnTop: () => Promise<void>
   setNoteReminder: (noteId: string, durationMs: number, label: string) => void
@@ -87,7 +89,9 @@ const DEFAULT_CONFIG: AppConfig = {
   font: 'editorial',
   isSidebarOpen: true,
   hasCompletedTour: false,
-  alwaysOnTop: false
+  alwaysOnTop: false,
+  typingSound: 'thock',
+  typewriterMode: false
 }
 
 export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -471,6 +475,20 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [updateConfig]
   )
 
+  const setTypingSound = useCallback(
+    (typingSound: 'none' | 'thock' | 'typewriter' | 'paper') => {
+      updateConfig({ typingSound })
+      soundEffects.playChecklistBounce()
+    },
+    [updateConfig]
+  )
+
+  const toggleTypewriterMode = useCallback(() => {
+    updateConfig({ typewriterMode: !config.typewriterMode })
+    soundEffects.playChecklistBounce()
+    toast.info(!config.typewriterMode ? 'Mode Mesin Tik Diaktifkan' : 'Mode Mesin Tik Dinonaktifkan')
+  }, [config.typewriterMode, updateConfig])
+
   const toggleSidebar = useCallback(() => {
     updateConfig({ isSidebarOpen: !config.isSidebarOpen })
   }, [config.isSidebarOpen, updateConfig])
@@ -620,6 +638,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteFolder,
         setTheme,
         setFont,
+        setTypingSound,
+        toggleTypewriterMode,
         toggleSidebar,
         toggleAlwaysOnTop,
         setNoteReminder,

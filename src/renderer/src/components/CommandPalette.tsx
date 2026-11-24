@@ -14,7 +14,9 @@ import {
   PushPinSlash,
   Folder as FolderIcon,
   BookOpen,
-  CloudArrowDown
+  CloudArrowDown,
+  Waveform,
+  TextAlignCenter
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -53,6 +55,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setActiveFilter,
     setTheme,
     setFont,
+    setTypingSound,
+    toggleTypewriterMode,
     toggleAlwaysOnTop,
     startTour
   } = useNotes()
@@ -149,6 +153,61 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       section: 'Pengaturan',
       run: () => {
         setFont('mono')
+        onClose()
+      }
+    },
+    {
+      id: 'action-toggle-typewriter',
+      title: config.typewriterMode ? 'Nonaktifkan Mode Mesin Tik' : 'Aktifkan Mode Mesin Tik (Typewriter Focus)',
+      subtitle: 'Alt+Z - Kunci baris penulisan aktif di tengah layar',
+      icon: <TextAlignCenter size={16} weight="bold" className="text-accent" />,
+      section: 'Pengaturan',
+      run: () => {
+        toggleTypewriterMode()
+        onClose()
+      }
+    },
+    {
+      id: 'action-sound-thock',
+      title: 'Suara Ketikan: Thock Mekanikal',
+      subtitle: 'Resonansi empuk switch mechanical keyboard',
+      icon: <Waveform size={16} weight="bold" className="text-accent" />,
+      section: 'Audio',
+      run: () => {
+        setTypingSound('thock')
+        onClose()
+      }
+    },
+    {
+      id: 'action-sound-typewriter',
+      title: 'Suara Ketikan: Mesin Tik Vintage',
+      subtitle: 'Ketukan logam renyah dan lonceng Enter',
+      icon: <Waveform size={16} weight="bold" className="text-accent" />,
+      section: 'Audio',
+      run: () => {
+        setTypingSound('typewriter')
+        onClose()
+      }
+    },
+    {
+      id: 'action-sound-paper',
+      title: 'Suara Ketikan: Friksi Kertas Katun',
+      subtitle: 'Goresan pulpen pada kertas bertekstur',
+      icon: <Waveform size={16} weight="bold" className="text-accent" />,
+      section: 'Audio',
+      run: () => {
+        setTypingSound('paper')
+        onClose()
+      }
+    },
+    {
+      id: 'action-sound-none',
+      title: 'Suara Ketikan: Hening (Bisu)',
+      subtitle: 'Mengetik tanpa efek suara audio',
+      icon: <Waveform size={16} weight="regular" />,
+      section: 'Audio',
+      run: () => {
+        setTypingSound('none')
         onClose()
       }
     },

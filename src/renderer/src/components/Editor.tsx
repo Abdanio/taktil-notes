@@ -17,7 +17,9 @@ import {
   CornersOut,
   CornersIn,
   BookOpen,
-  SpeakerHigh
+  SpeakerHigh,
+  Waveform,
+  TextAlignCenter
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -44,18 +46,22 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
     restoreNote,
     permanentlyDeleteNote,
     setNoteReminder,
-    clearNoteReminder
+    clearNoteReminder,
+    setTypingSound,
+    toggleTypewriterMode
   } = useNotes()
 
   const [mode, setMode] = useState<'hybrid' | 'write' | 'preview'>('hybrid')
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isReminderOpen, setIsReminderOpen] = useState(false)
+  const [isSoundMenuOpen, setIsSoundMenuOpen] = useState(false)
   const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Track window state changes in real time
   useEffect(() => {
@@ -156,6 +162,28 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   // Handle Content Change
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     updateNoteContent(activeNote.id, e.target.value, activeNote.title)
+    handleTypewriterScroll()
+  }
+
+  const handleTypewriterScroll = (): void => {
+    if (!config.typewriterMode || !textareaRef.current || !scrollContainerRef.current) return
+    const textarea = textareaRef.current
+    const scrollContainer = scrollContainerRef.current
+
+    const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart)
+    const lineCount = textBeforeCursor.split('\n').length
+    const estimatedCursorTop = lineCount * 24 + 100
+
+    const targetScroll = estimatedCursorTop - scrollContainer.clientHeight / 2
+    scrollContainer.scrollTo({
+      top: Math.max(0, targetScroll),
+      behavior: 'smooth'
+    })
+  }
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    soundEffects.playKeySound(config.typingSound || 'thock', e.key)
+    setTimeout(handleTypewriterScroll, 10)
   }
 
   // Handle Living Checkbox Toggle in Markdown View
@@ -316,6 +344,70 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
 
         {/* Right: Actions & Custom Window Controls */}
         <div className="app-no-drag flex items-center gap-1">
+          {/* Typewriter Focus Mode Toggle */}
+          <button
+            onClick={toggleTypewriterMode}
+            title={config.typewriterMode ? 'Matikan Mode Mesin Tik' : 'Aktifkan Mode Mesin Tik (Alt+Z)'}
+            className={cn(
+              'w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
+              config.typewriterMode
+                ? 'text-accent bg-accent/15'
+                : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
+            )}
+          >
+            <TextAlignCenter size={15} weight="bold" />
+          </button>
+
+          {/* Sensory Typing Audio Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setIsSoundMenuOpen(!isSoundMenuOpen)}
+              title="Sensory Typing Audio"
+              className={cn(
+                'w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer',
+                config.typingSound && config.typingSound !== 'none'
+                  ? 'text-accent bg-accent/15'
+                  : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
+              )}
+            >
+              <Waveform size={15} weight="bold" />
+            </button>
+
+            {isSoundMenuOpen && (
+              <div className="absolute right-0 top-9 w-52 bg-paper-card border border-paper-border rounded-xl p-2 shadow-2xl z-50 text-xs space-y-1">
+                <div className="px-2 py-1 text-[11px] font-semibold text-ink-muted border-b border-paper-border/60 mb-1 flex items-center justify-between">
+                  <span>Suara Ketikan Akustik</span>
+                  <button onClick={() => setIsSoundMenuOpen(false)} className="hover:text-ink-primary">
+                    <X size={12} weight="bold" />
+                  </button>
+                </div>
+                {[
+                  { id: 'thock', label: 'Thock Mekanikal', desc: 'Resonansi switch pelumas' },
+                  { id: 'typewriter', label: 'Mesin Tik Klasik', desc: 'Ketukan logam & lonceng' },
+                  { id: 'paper', label: 'Goresan Kertas', desc: 'Friksi pulpen katun halus' },
+                  { id: 'none', label: 'Bisu (Hening)', desc: 'Tanpa umpan balik audio' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setTypingSound(item.id as 'none' | 'thock' | 'typewriter' | 'paper')
+                      setIsSoundMenuOpen(false)
+                    }}
+                    className={cn(
+                      'w-full text-left px-2.5 py-1.5 rounded-lg transition-colors flex flex-col',
+                      config.typingSound === item.id
+                        ? 'bg-accent/10 text-accent font-medium'
+                        : 'text-ink-secondary hover:text-ink-primary hover:bg-paper-hover'
+                    )}
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-[10px] text-ink-muted">{item.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Reminder Bell */}
           <div className="relative">
             <button
@@ -514,7 +606,14 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
       </div>
 
       {/* Main Centered Writing Canvas (`max-w-[68ch] mx-auto`) */}
-      <div id="editor-drop-area" className="flex-1 overflow-y-auto px-6 py-8">
+      <div
+        ref={scrollContainerRef}
+        id="editor-drop-area"
+        className={cn(
+          'flex-1 overflow-y-auto px-6 py-8 transition-all',
+          config.typewriterMode && 'pt-[28vh] pb-[45vh]'
+        )}
+      >
         <div className="max-w-[68ch] mx-auto flex flex-col min-h-full">
           {/* Note Icon Button & Title Input Row */}
           <div className="flex items-center gap-3.5 pb-4 border-b border-paper-border/40 mb-6">
@@ -542,6 +641,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
               ref={textareaRef}
               value={activeNote.content}
               onChange={handleContentChange}
+              onKeyDown={handleTextareaKeyDown}
               disabled={activeNote.isTrash}
               placeholder="Tulis pemikiran Anda di sini... Mendukung Markdown (# Judul, **tebal**, - [ ] tugas, blok kode, dll)."
               className="w-full flex-1 bg-transparent text-sm leading-relaxed text-ink-primary placeholder:text-ink-muted font-body outline-none resize-none min-h-[450px]"
@@ -585,6 +685,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
                   ref={textareaRef}
                   value={activeNote.content}
                   onChange={handleContentChange}
+                  onKeyDown={handleTextareaKeyDown}
                   disabled={activeNote.isTrash}
                   placeholder="Ketik markdown..."
                   className="w-full bg-paper-card/50 p-4 rounded-xl border border-paper-border text-xs leading-relaxed text-ink-primary font-mono outline-none focus:border-accent resize-y min-h-[180px]"

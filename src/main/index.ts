@@ -67,7 +67,9 @@ const DEFAULT_CONFIG: AppConfig = {
   font: 'editorial',
   isSidebarOpen: true,
   hasCompletedTour: false,
-  alwaysOnTop: false
+  alwaysOnTop: false,
+  typingSound: 'thock',
+  typewriterMode: false
 }
 
 // Create the main application window

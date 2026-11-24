@@ -22,7 +22,8 @@ const SHORTCUTS: ShortcutItem[] = [
   { keys: ['Ctrl', 'P'], description: 'Sematkan / lepas sematan catatan aktif', category: 'Catatan' },
   { keys: ['Ctrl', 'Backspace'], description: 'Pindahkan catatan aktif ke sampah', category: 'Catatan' },
   { keys: ['Ctrl', 'Shift', 'T'], description: 'Alihkan tema Warm Paper / Matte Obsidian', category: 'Tampilan' },
-  { keys: ['Ctrl', 'Shift', 'F'], description: 'Ganti mode tipografi (Editorial / Sans / Mono)', category: 'Tampilan' }
+  { keys: ['Ctrl', 'Shift', 'F'], description: 'Ganti mode tipografi (Editorial / Sans / Mono)', category: 'Tampilan' },
+  { keys: ['Alt', 'Z'], description: 'Alihkan mode mesin tik (Typewriter Focus)', category: 'Tampilan' }
 ]
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose }) => {

@@ -29,6 +29,8 @@ export interface AppConfig {
   isSidebarOpen: boolean
   hasCompletedTour: boolean
   alwaysOnTop: boolean
+  typingSound?: 'none' | 'thock' | 'typewriter' | 'paper'
+  typewriterMode?: boolean
 }
 
 export interface ActiveTourStep {

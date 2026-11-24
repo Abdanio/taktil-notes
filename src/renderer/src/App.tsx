@@ -39,6 +39,8 @@ export const AppContent: React.FC = () => {
     setTheme,
     setFont,
     toggleSidebar,
+    toggleTypewriterMode,
+    setTypingSound,
     completeTour
   } = useNotes()
 
@@ -131,6 +133,14 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey
+
+      // Alt + Z: Toggle Typewriter Mode
+      if (e.altKey && (e.key.toLowerCase() === 'z' || e.code === 'KeyZ')) {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleTypewriterMode()
+        return
+      }
 
       // F11: Toggle Fullscreen
       if (e.key === 'F11') {
@@ -230,7 +240,8 @@ export const AppContent: React.FC = () => {
     setFont,
     softDeleteNote,
     togglePinNote,
-    toggleSidebar
+    toggleSidebar,
+    toggleTypewriterMode
   ])
 
   // Drag Handlers
