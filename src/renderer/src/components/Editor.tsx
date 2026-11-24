@@ -19,7 +19,12 @@ import {
   BookOpen,
   SpeakerHigh,
   Waveform,
-  TextAlignCenter
+  TextAlignCenter,
+  LinkSimple,
+  CaretDown,
+  CaretRight,
+  FileText,
+  Plus
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -35,6 +40,7 @@ interface EditorProps {
 
 export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const {
+    notes,
     activeNote,
     isSaving,
     config,
@@ -48,7 +54,10 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
     setNoteReminder,
     clearNoteReminder,
     setTypingSound,
-    toggleTypewriterMode
+    toggleTypewriterMode,
+    createNote,
+    setActiveNoteId,
+    setActiveFilter
   } = useNotes()
 
   const [mode, setMode] = useState<'hybrid' | 'write' | 'preview'>('hybrid')
@@ -59,9 +68,22 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [wikiQuery, setWikiQuery] = useState<string | null>(null)
+  const [wikiCursorPos, setWikiCursorPos] = useState<number | null>(null)
+  const [isBacklinksExpanded, setIsBacklinksExpanded] = useState(true)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Calculate Backlinks (notes that reference current note)
+  const backlinks = React.useMemo(() => {
+    if (!activeNote || !activeNote.title.trim()) return []
+    const target = `[[${activeNote.title.toLowerCase().trim()}]]`
+    return notes.filter((n) => {
+      if (n.id === activeNote.id || n.isTrash) return false
+      return n.content.toLowerCase().includes(target)
+    })
+  }, [notes, activeNote])
 
   // Track window state changes in real time
   useEffect(() => {
@@ -163,6 +185,64 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     updateNoteContent(activeNote.id, e.target.value, activeNote.title)
     handleTypewriterScroll()
+    checkWikiAutocomplete(e.target.value, e.target.selectionStart)
+  }
+
+  const checkWikiAutocomplete = (content: string, cursorPos: number): void => {
+    const beforeCursor = content.slice(0, cursorPos)
+    const lastDoubleOpen = beforeCursor.lastIndexOf('[[')
+    const lastDoubleClose = beforeCursor.lastIndexOf(']]')
+
+    if (lastDoubleOpen !== -1 && lastDoubleOpen > lastDoubleClose) {
+      const query = beforeCursor.slice(lastDoubleOpen + 2)
+      if (!query.includes('\n')) {
+        setWikiQuery(query)
+        setWikiCursorPos(lastDoubleOpen)
+        return
+      }
+    }
+    setWikiQuery(null)
+    setWikiCursorPos(null)
+  }
+
+  const insertWikiLink = (noteTitle: string): void => {
+    if (wikiCursorPos === null || !textareaRef.current) return
+    const content = activeNote.content
+    const before = content.slice(0, wikiCursorPos)
+    const afterCursor = content.slice(textareaRef.current.selectionStart)
+    const newContent = `${before}[[${noteTitle}]] ${afterCursor}`
+    updateNoteContent(activeNote.id, newContent, activeNote.title)
+    setWikiQuery(null)
+    setWikiCursorPos(null)
+    soundEffects.playChecklistBounce()
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newPos = wikiCursorPos + noteTitle.length + 5
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(newPos, newPos)
+      }
+    }, 20)
+  }
+
+  const handleWikiLinkClick = (targetTitle: string): void => {
+    soundEffects.playChecklistBounce()
+    const found = notes.find(
+      (n) => !n.isTrash && n.title.toLowerCase().trim() === targetTitle.toLowerCase().trim()
+    )
+    if (found) {
+      setActiveNoteId(found.id)
+      setActiveFilter('all')
+    } else {
+      const newNote = createNote(null, 'FileText')
+      updateNoteContent(
+        newNote.id,
+        `# ${targetTitle}\n\nCatatan ini dibuat otomatis dari tautan Wiki.`,
+        targetTitle
+      )
+      setActiveNoteId(newNote.id)
+      setActiveFilter('all')
+      toast.success(`Catatan baru "${targetTitle}" dibuat dari tautan!`)
+    }
   }
 
   const handleTypewriterScroll = (): void => {
@@ -651,6 +731,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
               <MarkdownRenderer
                 content={activeNote.content}
                 onToggleCheckbox={handleToggleCheckbox}
+                onWikiLinkClick={handleWikiLinkClick}
               />
             </div>
           ) : (
@@ -664,6 +745,7 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
                 <MarkdownRenderer
                   content={activeNote.content}
                   onToggleCheckbox={handleToggleCheckbox}
+                  onWikiLinkClick={handleWikiLinkClick}
                 />
               </div>
 
@@ -693,6 +775,117 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
               </div>
             </div>
           )}
+
+          {/* Wiki-Link Autocomplete Popup */}
+          {wikiQuery !== null && (
+            <div className="my-2 p-2 rounded-xl bg-paper-card border border-paper-border shadow-2xl space-y-1 max-h-48 overflow-y-auto">
+              <div className="px-2 py-1 text-[11px] font-semibold text-ink-muted flex items-center justify-between border-b border-paper-border/60">
+                <span>Tautkan Catatan ([[...)</span>
+                <button
+                  type="button"
+                  onClick={() => setWikiQuery(null)}
+                  className="text-ink-muted hover:text-ink-primary"
+                >
+                  <X size={12} weight="bold" />
+                </button>
+              </div>
+              {notes
+                .filter(
+                  (n) =>
+                    !n.isTrash &&
+                    n.id !== activeNote.id &&
+                    n.title.toLowerCase().includes(wikiQuery.toLowerCase())
+                )
+                .slice(0, 6)
+                .map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onClick={() => insertWikiLink(suggestion.title)}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-paper-hover text-ink-primary text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <NoteIconRenderer iconName={suggestion.icon} size={15} weight="duotone" />
+                    <span className="truncate">{suggestion.title || 'Tanpa Judul'}</span>
+                  </button>
+                ))}
+              {wikiQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => insertWikiLink(wikiQuery.trim())}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-accent/10 text-accent text-xs flex items-center gap-2 transition-colors cursor-pointer border-t border-paper-border/60 pt-2"
+                >
+                  <Plus size={14} weight="bold" />
+                  <span>
+                    Buat tautan baru: "<strong>{wikiQuery.trim()}</strong>"
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Backlinks Explorer Panel */}
+          <div className="mt-10 pt-6 border-t border-paper-border/60 space-y-3">
+            <button
+              type="button"
+              onClick={() => setIsBacklinksExpanded(!isBacklinksExpanded)}
+              className="flex items-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink-primary transition-colors cursor-pointer select-none"
+            >
+              {isBacklinksExpanded ? (
+                <CaretDown size={14} weight="bold" />
+              ) : (
+                <CaretRight size={14} weight="bold" />
+              )}
+              <LinkSimple size={15} weight="bold" className="text-accent" />
+              <span>Tautan Balik (Backlinks)</span>
+              <span className="px-1.5 py-0.5 rounded-full bg-paper-sidebar border border-paper-border text-[10px] font-mono">
+                {backlinks.length}
+              </span>
+            </button>
+
+            {isBacklinksExpanded && (
+              <div className="space-y-2">
+                {backlinks.length === 0 ? (
+                  <div className="p-4 rounded-xl border border-dashed border-paper-border/70 text-center text-xs text-ink-muted bg-paper-sidebar/30">
+                    Belum ada catatan lain yang menautkan ke "<strong>{activeNote.title}</strong>". Ketik{' '}
+                    <code className="font-mono text-accent bg-paper-card px-1 py-0.5 rounded border border-paper-border">
+                      [[{activeNote.title}]]
+                    </code>{' '}
+                    di catatan lain untuk menghubungkan pemikiran secara organik.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {backlinks.map((refNote) => (
+                      <button
+                        key={refNote.id}
+                        type="button"
+                        onClick={() => {
+                          soundEffects.playChecklistBounce()
+                          setActiveNoteId(refNote.id)
+                          setActiveFilter('all')
+                        }}
+                        className="text-left p-3 rounded-xl border border-paper-border/80 bg-paper-card/70 hover:bg-paper-card hover:border-accent/40 hover:shadow-md transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <NoteIconRenderer
+                            iconName={refNote.icon}
+                            size={16}
+                            weight="duotone"
+                            className="text-accent"
+                          />
+                          <h5 className="font-editorial text-xs font-semibold text-ink-primary group-hover:text-accent transition-colors truncate">
+                            {refNote.title || 'Tanpa Judul'}
+                          </h5>
+                        </div>
+                        <p className="text-[11px] text-ink-muted line-clamp-2 leading-relaxed font-body">
+                          {refNote.content.replace(/^#+\s+/gm, '').slice(0, 120)}...
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

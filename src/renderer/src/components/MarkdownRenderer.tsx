@@ -1,16 +1,18 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, Copy, Checks } from '@phosphor-icons/react'
+import { Check, Copy, Checks, ArrowSquareOut } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 
 interface MarkdownRendererProps {
   content: string
   onToggleCheckbox: (lineIndex: number, newChecked: boolean) => void
+  onWikiLinkClick?: (noteTitle: string) => void
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
-  onToggleCheckbox
+  onToggleCheckbox,
+  onWikiLinkClick
 }) => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
@@ -130,7 +132,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 isChecked && 'text-ink-muted opacity-60'
               )}
             >
-              {renderFormattedInline(taskText)}
+              {renderFormattedInline(taskText, onWikiLinkClick)}
             </span>
             {/* Animated Strikethrough Line */}
             <motion.div
@@ -149,7 +151,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('# ')) {
       elements.push(
         <h1 key={`h1-${i}`} className="font-heading text-2xl font-bold mt-6 mb-3 text-ink-primary">
-          {renderFormattedInline(line.slice(2))}
+          {renderFormattedInline(line.slice(2), onWikiLinkClick)}
         </h1>
       )
       continue
@@ -160,7 +162,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           key={`h2-${i}`}
           className="font-heading text-xl font-bold mt-5 mb-2.5 text-ink-primary"
         >
-          {renderFormattedInline(line.slice(3))}
+          {renderFormattedInline(line.slice(3), onWikiLinkClick)}
         </h2>
       )
       continue
@@ -171,7 +173,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           key={`h3-${i}`}
           className="font-heading text-base font-semibold mt-4 mb-2 text-ink-primary"
         >
-          {renderFormattedInline(line.slice(4))}
+          {renderFormattedInline(line.slice(4), onWikiLinkClick)}
         </h3>
       )
       continue
@@ -184,7 +186,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           key={`quote-${i}`}
           className="my-3 pl-3.5 py-1 border-l-2 border-accent text-sm text-ink-secondary bg-accent/5 rounded-r-lg font-body italic"
         >
-          {renderFormattedInline(line.slice(2))}
+          {renderFormattedInline(line.slice(2), onWikiLinkClick)}
         </blockquote>
       )
       continue
@@ -196,7 +198,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       if (listMatch) {
         elements.push(
           <li key={`li-${i}`} className="ml-4 list-disc text-sm text-ink-primary my-1 font-body">
-            {renderFormattedInline(listMatch[2])}
+            {renderFormattedInline(listMatch[2], onWikiLinkClick)}
           </li>
         )
         continue
@@ -233,7 +235,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // Standard Paragraph
     elements.push(
       <p key={`p-${i}`} className="text-sm text-ink-primary leading-relaxed font-body my-1.5">
-        {renderFormattedInline(line)}
+        {renderFormattedInline(line, onWikiLinkClick)}
       </p>
     )
   }
@@ -241,13 +243,36 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   return <div className="space-y-0.5">{elements}</div>
 }
 
-// Helper to format inline bold, italic, code, and links
-function renderFormattedInline(text: string): React.ReactNode {
+// Helper to format inline bold, italic, code, wiki-links, and external links
+function renderFormattedInline(
+  text: string,
+  onWikiLinkClick?: (noteTitle: string) => void
+): React.ReactNode {
   const parts: React.ReactNode[] = []
   let remaining = text
   let keyIdx = 0
 
   while (remaining.length > 0) {
+    // Wiki-Links: [[Note Title]]
+    const wikiMatch = remaining.match(/^\[\[([^\]]+)\]\]/)
+    if (wikiMatch) {
+      const targetTitle = wikiMatch[1].trim()
+      parts.push(
+        <button
+          key={`wiki-${keyIdx++}`}
+          type="button"
+          onClick={() => onWikiLinkClick?.(targetTitle)}
+          title={`Buka catatan terhubung: "${targetTitle}"`}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 my-0.5 rounded-md bg-accent/10 border border-accent/25 text-accent hover:bg-accent/20 hover:border-accent/40 font-medium text-xs transition-all cursor-pointer active:scale-95"
+        >
+          <ArrowSquareOut size={12} weight="bold" />
+          <span>{targetTitle}</span>
+        </button>
+      )
+      remaining = remaining.slice(wikiMatch[0].length)
+      continue
+    }
+
     // Inline code: `code`
     const codeMatch = remaining.match(/^`([^`]+)`/)
     if (codeMatch) {

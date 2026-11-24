@@ -16,7 +16,8 @@ import {
   BookOpen,
   CloudArrowDown,
   Waveform,
-  TextAlignCenter
+  TextAlignCenter,
+  Graph
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -25,6 +26,7 @@ interface CommandPaletteProps {
   onClose: () => void
   onOpenShortcuts: () => void
   onOpenMarkdownGuide?: () => void
+  onOpenGraphModal?: () => void
   onOpenUpdateModal?: () => void
   appVersion?: string
 }
@@ -43,6 +45,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose,
   onOpenShortcuts,
   onOpenMarkdownGuide,
+  onOpenGraphModal,
   onOpenUpdateModal,
   appVersion = '1.0.0'
 }) => {
@@ -84,6 +87,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       run: () => {
         createNote()
         onClose()
+      }
+    },
+    {
+      id: 'action-open-graph',
+      title: 'Buka Peta Pengetahuan (Constellation Graph)',
+      subtitle: 'Ctrl+G - Visualisasi relasi tautan antar-catatan',
+      icon: <Graph size={16} weight="duotone" className="text-accent" />,
+      section: 'Navigasi',
+      run: () => {
+        onClose()
+        onOpenGraphModal?.()
       }
     },
     {

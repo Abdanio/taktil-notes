@@ -14,6 +14,7 @@ import {
   Keyboard,
   BookOpen,
   CloudArrowDown,
+  Graph,
   X
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
@@ -24,6 +25,7 @@ import { soundEffects } from '../lib/sound'
 interface SidebarProps {
   onOpenShortcuts: () => void
   onOpenMarkdownGuide: () => void
+  onOpenGraphModal?: () => void
   onOpenUpdateModal?: () => void
   appVersion?: string
   hasUpdateAvailable?: boolean
@@ -103,6 +105,7 @@ const DroppableSidebarTarget: React.FC<{
 export const Sidebar: React.FC<SidebarProps> = ({
   onOpenShortcuts,
   onOpenMarkdownGuide,
+  onOpenGraphModal,
   onOpenUpdateModal,
   appVersion = '1.0.0',
   hasUpdateAvailable = false
@@ -348,6 +351,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 3. Bottom Pinned Actions: Theme, Font, Markdown Guide, Shortcuts, Help */}
       <div className="p-2 border-t border-paper-border/60 bg-paper-sidebar/80 shrink-0 flex flex-col gap-1">
+        {/* Constellation Graph Button */}
+        {onOpenGraphModal && (
+          <button
+            onClick={onOpenGraphModal}
+            title="Peta Pengetahuan Konstelasi Graf (Ctrl+G)"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-ink-secondary hover:text-ink-primary hover:bg-paper-hover transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Graph size={15} weight="duotone" className="text-accent" />
+              <span>Graf Pengetahuan</span>
+            </div>
+            <kbd className="text-[10px] font-mono text-ink-muted px-1.5 py-0.5 rounded bg-paper-card border border-paper-border">
+              Ctrl+G
+            </kbd>
+          </button>
+        )}
+
         {/* Markdown Guide Button */}
         <button
           onClick={onOpenMarkdownGuide}

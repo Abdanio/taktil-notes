@@ -18,6 +18,7 @@ const SHORTCUTS: ShortcutItem[] = [
   { keys: ['Ctrl', 'K'], description: 'Buka palet perintah & pencarian cepat', category: 'Navigasi' },
   { keys: ['Ctrl', 'B'], description: 'Sembunyikan / tampilkan sidebar', category: 'Tampilan' },
   { keys: ['Ctrl', 'M'], description: 'Buka panduan sintaksis Markdown', category: 'Navigasi' },
+  { keys: ['Ctrl', 'G'], description: 'Buka peta pengetahuan konstelasi graf', category: 'Navigasi' },
   { keys: ['Ctrl', '/'], description: 'Buka lembar panduan pintasan ini', category: 'Navigasi' },
   { keys: ['Ctrl', 'P'], description: 'Sematkan / lepas sematan catatan aktif', category: 'Catatan' },
   { keys: ['Ctrl', 'Backspace'], description: 'Pindahkan catatan aktif ke sampah', category: 'Catatan' },

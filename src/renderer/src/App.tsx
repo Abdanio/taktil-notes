@@ -19,6 +19,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { MarkdownGuideModal } from './components/MarkdownGuideModal'
 import { UpdateModal } from './components/UpdateModal'
+import { ConstellationGraphModal } from './components/ConstellationGraphModal'
 import type { UpdateStatus } from '../../preload/index.d'
 import { startOnboardingTour } from './lib/tour'
 
@@ -33,6 +34,8 @@ export const AppContent: React.FC = () => {
     reorderNotes,
     createNote,
     activeNoteId,
+    setActiveNoteId,
+    setActiveFilter,
     insertMarkdownSnippet,
     togglePinNote,
     softDeleteNote,
@@ -47,6 +50,7 @@ export const AppContent: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
   const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false)
+  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [appVersion, setAppVersion] = useState('1.0.0')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
@@ -173,6 +177,14 @@ export const AppContent: React.FC = () => {
         return
       }
 
+      // Ctrl/Cmd + G: Constellation Knowledge Graph
+      if (isCmdOrCtrl && (e.key.toLowerCase() === 'g' || e.code === 'KeyG')) {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsGraphModalOpen((prev) => !prev)
+        return
+      }
+
       // Ctrl/Cmd + N: New Note
       if (isCmdOrCtrl && (e.key.toLowerCase() === 'n' || e.code === 'KeyN')) {
         e.preventDefault()
@@ -295,6 +307,7 @@ export const AppContent: React.FC = () => {
               <Sidebar
                 onOpenShortcuts={() => setIsShortcutsOpen(true)}
                 onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
+                onOpenGraphModal={() => setIsGraphModalOpen(true)}
                 onOpenUpdateModal={handleCheckForUpdates}
                 appVersion={appVersion}
                 hasUpdateAvailable={updateStatus.state === 'available' || updateStatus.state === 'downloaded'}
@@ -339,6 +352,7 @@ export const AppContent: React.FC = () => {
           onClose={() => setIsCommandPaletteOpen(false)}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
           onOpenMarkdownGuide={() => setIsMarkdownGuideOpen(true)}
+          onOpenGraphModal={() => setIsGraphModalOpen(true)}
           onOpenUpdateModal={handleCheckForUpdates}
           appVersion={appVersion}
         />
@@ -354,6 +368,16 @@ export const AppContent: React.FC = () => {
           isOpen={isMarkdownGuideOpen}
           onClose={() => setIsMarkdownGuideOpen(false)}
           onInsertMarkdown={insertMarkdownSnippet}
+        />
+
+        {/* Constellation Knowledge Graph Modal (Ctrl+G) */}
+        <ConstellationGraphModal
+          isOpen={isGraphModalOpen}
+          onClose={() => setIsGraphModalOpen(false)}
+          onSelectNote={(noteId) => {
+            setActiveNoteId(noteId)
+            setActiveFilter('all')
+          }}
         />
 
         {/* Auto-Updater Modal */}
