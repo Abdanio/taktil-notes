@@ -29,7 +29,10 @@ import {
   FilePdf,
   FileHtml,
   Book,
-  PencilSimpleLine
+  PencilSimpleLine,
+  LockKey,
+  LockKeyOpen,
+  ShieldCheck
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -63,7 +66,12 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
     toggleTypewriterMode,
     createNote,
     setActiveNoteId,
-    setActiveFilter
+    setActiveFilter,
+    unlockedNotes,
+    encryptNote,
+    unlockNote,
+    lockNote,
+    removeNoteEncryption
   } = useNotes()
 
   const [mode, setMode] = useState<'hybrid' | 'write' | 'preview'>('hybrid')
@@ -74,6 +82,13 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
   const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
   const [isSketchModalOpen, setIsSketchModalOpen] = useState(false)
+  const [isEncryptModalOpen, setIsEncryptModalOpen] = useState(false)
+  const [isRemoveEncryptModalOpen, setIsRemoveEncryptModalOpen] = useState(false)
+  const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false)
+  const [vaultPasswordInput, setVaultPasswordInput] = useState('')
+  const [vaultConfirmInput, setVaultConfirmInput] = useState('')
+  const [vaultUnlockInput, setVaultUnlockInput] = useState('')
+  const [isVaultSubmitting, setIsVaultSubmitting] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [wikiQuery, setWikiQuery] = useState<string | null>(null)
@@ -129,6 +144,49 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
 
   const handleClose = (): void => {
     window.electronAPI?.close()
+  }
+
+  const handleUnlockVault = async (): Promise<void> => {
+    if (!activeNote || !vaultUnlockInput.trim()) return
+    setIsVaultSubmitting(true)
+    const success = await unlockNote(activeNote.id, vaultUnlockInput)
+    setIsVaultSubmitting(false)
+    if (success) {
+      setVaultUnlockInput('')
+    }
+  }
+
+  const handleApplyEncryption = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!activeNote) return
+    if (!vaultPasswordInput.trim()) {
+      toast.error('Kata sandi tidak boleh kosong.')
+      return
+    }
+    if (vaultPasswordInput !== vaultConfirmInput) {
+      toast.error('Konfirmasi kata sandi tidak cocok.')
+      return
+    }
+    setIsVaultSubmitting(true)
+    const success = await encryptNote(activeNote.id, vaultPasswordInput)
+    setIsVaultSubmitting(false)
+    if (success) {
+      setIsEncryptModalOpen(false)
+      setVaultPasswordInput('')
+      setVaultConfirmInput('')
+    }
+  }
+
+  const handleRemoveEncryption = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!activeNote || !vaultPasswordInput.trim()) return
+    setIsVaultSubmitting(true)
+    const success = await removeNoteEncryption(activeNote.id, vaultPasswordInput)
+    setIsVaultSubmitting(false)
+    if (success) {
+      setIsRemoveEncryptModalOpen(false)
+      setVaultPasswordInput('')
+    }
   }
 
   if (!activeNote) {
@@ -760,6 +818,73 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
             )}
           </div>
 
+          {/* Encrypted Vault Button */}
+          <div className="relative">
+            {activeNote.isEncrypted ? (
+              unlockedNotes[activeNote.id] ? (
+                <button
+                  onClick={() => setIsVaultMenuOpen(!isVaultMenuOpen)}
+                  title="Catatan Terenkripsi (Terbuka) — Klik untuk opsi brankas"
+                  className="w-7 h-7 rounded-lg text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <LockKeyOpen size={15} weight="bold" />
+                </button>
+              ) : (
+                <button
+                  disabled
+                  title="Catatan Terkunci"
+                  className="w-7 h-7 rounded-lg text-amber-500 bg-amber-500/10 flex items-center justify-center transition-colors"
+                >
+                  <LockKey size={15} weight="bold" />
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => {
+                  setVaultPasswordInput('')
+                  setVaultConfirmInput('')
+                  setIsEncryptModalOpen(true)
+                }}
+                title="Kunci Catatan Ini dengan Enkripsi AES-256"
+                className="w-7 h-7 rounded-lg text-ink-secondary hover:text-ink-primary hover:bg-paper-hover flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <LockKey size={15} weight="regular" />
+              </button>
+            )}
+
+            {isVaultMenuOpen && activeNote.isEncrypted && unlockedNotes[activeNote.id] && (
+              <div className="absolute right-0 top-9 w-52 bg-paper-card border border-paper-border rounded-xl p-2 shadow-2xl z-50 text-xs space-y-1">
+                <div className="px-2 py-1 text-[11px] font-semibold text-ink-muted border-b border-paper-border/60 mb-1 flex items-center justify-between">
+                  <span>Brankas Catatan</span>
+                  <button onClick={() => setIsVaultMenuOpen(false)} className="hover:text-ink-primary cursor-pointer">
+                    <X size={12} weight="bold" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsVaultMenuOpen(false)
+                    lockNote(activeNote.id)
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-ink-primary hover:bg-paper-hover transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <LockKey size={14} className="text-amber-500" />
+                  <span>Kunci Kembali Sekarang</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsVaultMenuOpen(false)
+                    setVaultPasswordInput('')
+                    setIsRemoveEncryptModalOpen(true)
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <LockKeyOpen size={14} />
+                  <span>Lepas Enkripsi</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Trash or Restore Action */}
           {activeNote.isTrash ? (
             <div className="flex items-center gap-1">
@@ -856,8 +981,45 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
             />
           </div>
 
-          {/* Editor Body */}
-          {mode === 'write' ? (
+          {/* Editor Body or Locked Vault Screen */}
+          {activeNote.isEncrypted && !unlockedNotes[activeNote.id] ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center my-auto min-h-[380px] bg-paper-card/40 rounded-2xl border border-paper-border/80 shadow-xs">
+              <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-4 shadow-sm">
+                <LockKey size={32} weight="duotone" />
+              </div>
+              <h3 className="font-heading text-xl font-bold text-ink-primary mb-1">
+                Catatan Terenkripsi (Brankas Taktil)
+              </h3>
+              <p className="text-xs text-ink-secondary max-w-sm mb-6 leading-relaxed">
+                Catatan ini dikunci dengan algoritma enkripsi AES-256-GCM. Masukkan kata sandi atau PIN untuk membukanya.
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleUnlockVault()
+                }}
+                className="w-full max-w-xs space-y-3"
+              >
+                <input
+                  type="password"
+                  value={vaultUnlockInput}
+                  onChange={(e) => setVaultUnlockInput(e.target.value)}
+                  placeholder="Kata sandi brankas..."
+                  autoFocus
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-paper-border bg-paper-card text-ink-primary text-sm font-mono placeholder:text-ink-muted/50 outline-none focus:border-accent text-center shadow-inner"
+                />
+                <button
+                  type="submit"
+                  disabled={!vaultUnlockInput.trim() || isVaultSubmitting}
+                  className="w-full py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  <LockKeyOpen size={16} weight="bold" />
+                  <span>{isVaultSubmitting ? 'Membuka...' : 'Buka Kunci Catatan'}</span>
+                </button>
+              </form>
+            </div>
+          ) : mode === 'write' ? (
             <textarea
               ref={textareaRef}
               value={activeNote.content}
@@ -1075,6 +1237,131 @@ export const Editor: React.FC<EditorProps> = ({ onOpenMarkdownGuide }) => {
           updateNoteContent(activeNote.id, activeNote.content + snippet, activeNote.title)
         }}
       />
+
+      {/* Encrypt Note Dialog */}
+      {isEncryptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/50 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl border border-paper-border bg-paper-card p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                <LockKey size={20} weight="duotone" />
+              </div>
+              <div>
+                <h3 className="font-heading text-base font-bold text-ink-primary">
+                  Kunci & Enkripsi Catatan
+                </h3>
+                <p className="text-[11px] text-ink-muted">Enkripsi AES-256-GCM tingkat militer</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              Catatan ini akan dienkripsi secara lokal. Tanpa kata sandi atau PIN, isi catatan tidak dapat dipulihkan oleh siapa pun.
+            </p>
+
+            <form onSubmit={handleApplyEncryption} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-ink-muted block mb-1">
+                  Kata Sandi / PIN Baru
+                </label>
+                <input
+                  type="password"
+                  value={vaultPasswordInput}
+                  onChange={(e) => setVaultPasswordInput(e.target.value)}
+                  placeholder="Masukkan kata sandi..."
+                  autoFocus
+                  className="w-full px-3 py-2 rounded-xl border border-paper-border bg-paper-sidebar text-xs text-ink-primary outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-ink-muted block mb-1">
+                  Konfirmasi Kata Sandi
+                </label>
+                <input
+                  type="password"
+                  value={vaultConfirmInput}
+                  onChange={(e) => setVaultConfirmInput(e.target.value)}
+                  placeholder="Ulangi kata sandi..."
+                  className="w-full px-3 py-2 rounded-xl border border-paper-border bg-paper-sidebar text-xs text-ink-primary outline-none focus:border-accent"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEncryptModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-ink-secondary hover:text-ink-primary rounded-xl border border-paper-border hover:bg-paper-hover transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVaultSubmitting}
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isVaultSubmitting ? 'Mengenkripsi...' : 'Terapkan Enkripsi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Encryption Dialog */}
+      {isRemoveEncryptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/50 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl border border-paper-border bg-paper-card p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                <LockKeyOpen size={20} weight="duotone" />
+              </div>
+              <div>
+                <h3 className="font-heading text-base font-bold text-ink-primary">
+                  Lepas Enkripsi Catatan
+                </h3>
+                <p className="text-[11px] text-ink-muted">Simpan kembali sebagai teks biasa</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-ink-secondary leading-relaxed">
+              Masukkan kata sandi brankas untuk memastikan identitas Anda sebelum melepas proteksi enkripsi.
+            </p>
+
+            <form onSubmit={handleRemoveEncryption} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-ink-muted block mb-1">
+                  Kata Sandi Brankas
+                </label>
+                <input
+                  type="password"
+                  value={vaultPasswordInput}
+                  onChange={(e) => setVaultPasswordInput(e.target.value)}
+                  placeholder="Masukkan kata sandi..."
+                  autoFocus
+                  className="w-full px-3 py-2 rounded-xl border border-paper-border bg-paper-sidebar text-xs text-ink-primary outline-none focus:border-accent"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRemoveEncryptModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-ink-secondary hover:text-ink-primary rounded-xl border border-paper-border hover:bg-paper-hover transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVaultSubmitting}
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isVaultSubmitting ? 'Memproses...' : 'Lepas Enkripsi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

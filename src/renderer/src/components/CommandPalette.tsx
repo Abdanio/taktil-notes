@@ -20,7 +20,8 @@ import {
   Graph,
   FilePdf,
   FileHtml,
-  Book
+  Book,
+  LockKey
 } from '@phosphor-icons/react'
 import { useNotes } from '../context/NotesContext'
 
@@ -65,6 +66,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setTypingSound,
     toggleTypewriterMode,
     toggleAlwaysOnTop,
+    lockNote,
     startTour
   } = useNotes()
 
@@ -285,6 +287,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       section: 'Pengaturan',
       run: () => {
         toggleAlwaysOnTop()
+        onClose()
+      }
+    },
+    {
+      id: 'action-lock-note',
+      title: activeNote?.isEncrypted ? 'Kunci Brankas Catatan Ini' : 'Kunci Catatan Ini dengan Sandi',
+      subtitle: 'Enkripsi brankas tingkat tinggi AES-256-GCM',
+      icon: <LockKey size={16} weight="bold" className="text-amber-500" />,
+      section: 'Keamanan',
+      run: () => {
+        if (activeNote) {
+          lockNote(activeNote.id)
+        }
         onClose()
       }
     },

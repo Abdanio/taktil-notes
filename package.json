@@ -1,6 +1,6 @@
 {
   "name": "desktop-notes-app",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Local-first tactile desktop notes application in Electron, React, TypeScript and Tailwind CSS",
   "type": "module",
   "main": "./out/main/index.js",
@@ -43,7 +43,7 @@
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.3.0",
     "autoprefixer": "^10.4.20",
     "electron": "^45.4.1",
     "electron-builder": "^26.18.0",

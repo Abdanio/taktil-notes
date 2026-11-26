@@ -5,7 +5,8 @@ import {
   Folder as FolderIcon,
   DotsThreeVertical,
   Smiley,
-  Trash
+  Trash,
+  LockKey
 } from '@phosphor-icons/react'
 import type { Note, Folder } from '../types'
 import { formatIndonesianDate, extractPreview, cn } from '../lib/utils'
@@ -29,10 +30,14 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   isDraggingOverlay = false,
   onTogglePin
 }) => {
-  const { updateNoteIcon, softDeleteNote } = useNotes()
+  const { updateNoteIcon, softDeleteNote, unlockedNotes } = useNotes()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
-  const previewText = extractPreview(note.content)
+
+  const isLocked = Boolean(note.isEncrypted && !unlockedNotes[note.id])
+  const previewText = isLocked
+    ? '🔒 Catatan Terkunci — Masukkan kata sandi brankas untuk membuka'
+    : extractPreview(note.content || (unlockedNotes[note.id] ?? ''))
 
   return (
     <>
@@ -67,11 +72,18 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 
               <h4
                 className={cn(
-                  'font-heading text-sm font-semibold leading-snug line-clamp-1',
+                  'font-heading text-sm font-semibold leading-snug line-clamp-1 flex items-center gap-1.5',
                   isActive ? 'text-accent' : 'text-ink-primary'
                 )}
               >
-                {note.title || 'Catatan Baru'}
+                {note.isEncrypted && (
+                  <LockKey
+                    size={12}
+                    weight="bold"
+                    className={isLocked ? 'text-amber-500 shrink-0' : 'text-emerald-500 shrink-0'}
+                  />
+                )}
+                <span>{note.title || 'Catatan Baru'}</span>
               </h4>
             </div>
 

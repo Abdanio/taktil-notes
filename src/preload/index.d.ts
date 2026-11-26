@@ -12,6 +12,12 @@ export interface Note {
     dueTime: number
     label: string
   } | null
+  isEncrypted?: boolean
+  encryptedData?: {
+    ciphertext: string
+    salt: string
+    iv: string
+  }
 }
 
 export interface Folder {

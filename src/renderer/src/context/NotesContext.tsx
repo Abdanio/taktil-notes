@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import type { Note, Folder, AppConfig, FilterType } from '../types'
 import { toast } from 'sonner'
 import { soundEffects } from '../lib/sound'
+import { encryptNoteContent, decryptNoteContent } from '../lib/crypto'
+import { searchNotes } from '../lib/search'
 
 interface NotesContextType {
   notes: Note[]
@@ -13,6 +15,7 @@ interface NotesContextType {
   config: AppConfig
   isSaving: boolean
   activeDragNote: Note | null
+  unlockedNotes: Record<string, string>
   setActiveDragNote: (note: Note | null) => void
   setActiveFilter: (filter: FilterType) => void
   setSearchQuery: (query: string) => void
@@ -38,6 +41,10 @@ interface NotesContextType {
   toggleAlwaysOnTop: () => Promise<void>
   setNoteReminder: (noteId: string, durationMs: number, label: string) => void
   clearNoteReminder: (noteId: string) => void
+  encryptNote: (id: string, password: string) => Promise<boolean>
+  unlockNote: (id: string, password: string) => Promise<boolean>
+  lockNote: (id: string) => void
+  removeNoteEncryption: (id: string, password: string) => Promise<boolean>
   completeTour: () => void
   startTour: () => void
 }
@@ -103,6 +110,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
   const [isSaving, setIsSaving] = useState(false)
   const [activeDragNote, setActiveDragNote] = useState<Note | null>(null)
+  const [unlockedNotes, setUnlockedNotes] = useState<Record<string, string>>({})
+  const sessionPasswordsRef = useRef<Map<string, string>>(new Map())
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reminderTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
@@ -264,21 +273,47 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Update Note Content & Title
   const updateNoteContent = useCallback(
     (id: string, content: string, title?: string) => {
+      const target = notes.find((n) => n.id === id)
+
+      let autoTitle = title
+      if (autoTitle === undefined) {
+        const firstLine = content.trim().split('\n')[0] || ''
+        const cleanTitle = firstLine.replace(/^#+\s*/, '').trim()
+        autoTitle = cleanTitle.length > 0 ? cleanTitle.slice(0, 80) : 'Catatan Baru'
+      }
+
+      if (target?.isEncrypted) {
+        setUnlockedNotes((prev) => ({ ...prev, [id]: content }))
+        const pwd = sessionPasswordsRef.current.get(id)
+        if (pwd) {
+          encryptNoteContent(content, pwd)
+            .then((enc) => {
+              setNotes((prev) => {
+                const next = prev.map((n) => {
+                  if (n.id !== id) return n
+                  return {
+                    ...n,
+                    title: autoTitle || n.title,
+                    encryptedData: enc,
+                    content: '',
+                    updatedAt: Date.now()
+                  }
+                })
+                persistNotesDebounced(next)
+                return next
+              })
+            })
+            .catch((err) => console.error('Failed to auto re-encrypt note:', err))
+        }
+        return
+      }
+
       setNotes((prev) => {
         const next = prev.map((note) => {
           if (note.id !== id) return note
-
-          let autoTitle = title
-          if (autoTitle === undefined) {
-            // Auto extract title from first line if not provided
-            const firstLine = content.trim().split('\n')[0] || ''
-            const cleanTitle = firstLine.replace(/^#+\s*/, '').trim()
-            autoTitle = cleanTitle.length > 0 ? cleanTitle.slice(0, 80) : 'Catatan Baru'
-          }
-
           return {
             ...note,
-            title: autoTitle,
+            title: autoTitle || note.title,
             content,
             updatedAt: Date.now()
           }
@@ -287,7 +322,117 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return next
       })
     },
-    [persistNotesDebounced]
+    [notes, persistNotesDebounced]
+  )
+
+  // Encrypt note using AES-256-GCM
+  const encryptNote = useCallback(
+    async (id: string, password: string): Promise<boolean> => {
+      const target = notes.find((n) => n.id === id)
+      if (!target) return false
+
+      const plain = unlockedNotes[id] ?? target.content
+      try {
+        const enc = await encryptNoteContent(plain, password)
+        sessionPasswordsRef.current.set(id, password)
+        setUnlockedNotes((prev) => ({ ...prev, [id]: plain }))
+
+        setNotes((prev) => {
+          const next = prev.map((n) => {
+            if (n.id !== id) return n
+            return {
+              ...n,
+              isEncrypted: true,
+              encryptedData: enc,
+              content: '', // never persist plain content on disk
+              updatedAt: Date.now()
+            }
+          })
+          persistNotesDebounced(next)
+          return next
+        })
+
+        toast.success('Catatan berhasil diamankan dengan enkripsi AES-256-GCM!')
+        return true
+      } catch (err) {
+        toast.error('Gagal mengenkripsi catatan.')
+        return false
+      }
+    },
+    [notes, unlockedNotes, persistNotesDebounced]
+  )
+
+  // Unlock note
+  const unlockNote = useCallback(
+    async (id: string, password: string): Promise<boolean> => {
+      const target = notes.find((n) => n.id === id)
+      if (!target || !target.encryptedData) return false
+
+      try {
+        const decrypted = await decryptNoteContent(target.encryptedData, password)
+        sessionPasswordsRef.current.set(id, password)
+        setUnlockedNotes((prev) => ({ ...prev, [id]: decrypted }))
+        toast.success('Brankas berhasil dibuka!')
+        return true
+      } catch {
+        toast.error('Kata sandi salah. Gagal membuka catatan.')
+        return false
+      }
+    },
+    [notes]
+  )
+
+  // Lock note
+  const lockNote = useCallback((id: string) => {
+    sessionPasswordsRef.current.delete(id)
+    setUnlockedNotes((prev) => {
+      const copy = { ...prev }
+      delete copy[id]
+      return copy
+    })
+    toast('Catatan telah dikunci kembali.')
+  }, [])
+
+  // Remove encryption
+  const removeNoteEncryption = useCallback(
+    async (id: string, password: string): Promise<boolean> => {
+      const target = notes.find((n) => n.id === id)
+      if (!target || !target.encryptedData) return false
+
+      try {
+        const decrypted =
+          unlockedNotes[id] ?? (await decryptNoteContent(target.encryptedData, password))
+
+        sessionPasswordsRef.current.delete(id)
+        setUnlockedNotes((prev) => {
+          const copy = { ...prev }
+          delete copy[id]
+          return copy
+        })
+
+        setNotes((prev) => {
+          const next = prev.map((n) => {
+            if (n.id !== id) return n
+            return {
+              ...n,
+              isEncrypted: false,
+              encryptedData: undefined,
+              content: decrypted,
+              updatedAt: Date.now()
+            }
+          })
+          persistNotesDebounced(next)
+          return next
+        })
+
+        toast.success('Enkripsi berhasil dilepas.')
+        return true
+      } catch {
+        toast.error('Kata sandi salah. Gagal melepas enkripsi.')
+        return false
+      }
+    },
+    [notes, unlockedNotes, persistNotesDebounced]
   )
 
   // Toggle Pin
@@ -605,7 +750,16 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateConfig({ hasCompletedTour: false })
   }, [updateConfig])
 
-  const activeNote = notes.find((n) => n.id === activeNoteId) || null
+  const rawActiveNote = notes.find((n) => n.id === activeNoteId) || null
+  const activeNote = rawActiveNote
+    ? {
+        ...rawActiveNote,
+        content:
+          rawActiveNote.isEncrypted && unlockedNotes[rawActiveNote.id] !== undefined
+            ? unlockedNotes[rawActiveNote.id]
+            : rawActiveNote.content
+      }
+    : null
 
   return (
     <NotesContext.Provider
@@ -619,6 +773,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         config,
         isSaving,
         activeDragNote,
+        unlockedNotes,
         setActiveDragNote,
         setActiveFilter,
         setSearchQuery,
@@ -644,6 +799,10 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleAlwaysOnTop,
         setNoteReminder,
         clearNoteReminder,
+        encryptNote,
+        unlockNote,
+        lockNote,
+        removeNoteEncryption,
         completeTour,
         startTour
       }}

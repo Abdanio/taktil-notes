@@ -13,6 +13,7 @@ import { SortableNoteCard } from './SortableNoteCard'
 import { ParallaxEmptyState } from './ParallaxEmptyState'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { NoteIconPickerModal } from './NoteIconPicker'
+import { searchNotes } from '../lib/search'
 
 export const NoteList: React.FC = () => {
   const {
@@ -21,6 +22,7 @@ export const NoteList: React.FC = () => {
     activeNoteId,
     activeFilter,
     searchQuery,
+    unlockedNotes,
     setSearchQuery,
     setActiveNoteId,
     createNote,
@@ -45,21 +47,17 @@ export const NoteList: React.FC = () => {
     return note.folderId === activeFilter
   })
 
-  // Filter notes based on search query
-  const displayedNotes = filteredBySection.filter((note) => {
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      note.title.toLowerCase().includes(q) ||
-      note.content.toLowerCase().includes(q)
-    )
-  })
-
-  // Sorted: pinned first, then by updatedAt desc
-  const sortedNotes = [...displayedNotes].sort((a, b) => {
-    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
-    return b.updatedAt - a.updatedAt
-  })
+  // Fast Full-Text Search or Section Sorting
+  const sortedNotes = React.useMemo(() => {
+    if (searchQuery.trim()) {
+      const searchResults = searchNotes(filteredBySection, searchQuery, unlockedNotes)
+      return searchResults.map((r) => r.note)
+    }
+    return [...filteredBySection].sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+      return b.updatedAt - a.updatedAt
+    })
+  }, [filteredBySection, searchQuery, unlockedNotes])
 
   // Title for active section
   const getSectionTitle = (): string => {
